@@ -54,9 +54,11 @@ tangle w blocks = S.evalStateT (mapM_ putFile files) ("", macros) where
 	
 	putFile (path, content) = do
 		lift $ do
-			w ""
+			w "\n"
 			w path
+			w "\n"
 			w $ TL.replicate (TL.length path) "="
+			w "\n"
 			
 		mapM_ putContent content
 		
