@@ -42,8 +42,9 @@ accumFile b = case b of
 	BlockText _ -> return ()
 	BlockDefine _ _ -> return ()
 	BlockFile name content -> do
+		let accum new old = old ++ new ++ [ContentText "\n"]
 		files <- S.get
-		S.put $ Map.insertWith (\new old -> old ++ new) name content files
+		S.put $ Map.insertWith accum name content files
 
 tangle :: Monad m => (TL.Text -> m ()) -> [Block] -> m ()
 tangle w blocks = S.evalStateT (mapM_ putFile files) ("", macros) where
