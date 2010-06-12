@@ -19,7 +19,6 @@ module Anansi.Parser
 	) where
 import Prelude hiding (FilePath)
 import Control.Applicative ((<|>), (<$>))
-import Control.Monad (liftM)
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State as S
 import Data.List (unfoldr)
@@ -29,7 +28,9 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
+import System.FilePath (replaceFileName)
 import Anansi.Types
+import Anansi.Util
 
 data Command
 	= CommandInclude TL.Text
@@ -140,9 +141,7 @@ parseContent block = parse [] where
 			c <- P.satisfy (not . isSpace)
 			return (indent, c)
 		name <- untilChar '|'
-		
-		let indent' = replace '\t' "        " indent
-		return $ ContentMacro (TL.pack indent') (TL.strip (TL.cons c name))
+		return $ ContentMacro (TL.pack indent) (TL.strip (TL.cons c name))
 	
 	contentText = do
 		text <- untilChar '\n'
@@ -153,10 +152,12 @@ type FileMap = Map.Map FilePath [Line]
 
 genLines :: Monad m => (FilePath -> m [Line]) -> FilePath -> S.StateT FileMap m [Line]
 genLines getLines = genLines' where
-	genLines' path = lift (getLines path) >>= concatMapM resolveIncludes
+	genLines' path = lift (getLines path) >>= concatMapM (resolveIncludes path)
 	
-	resolveIncludes line = case line of
-		LineCommand (CommandInclude path) -> genLines' path
+	relative x y = TL.pack $ replaceFileName (TL.unpack x) (TL.unpack y)
+	
+	resolveIncludes root line = case line of
+		LineCommand (CommandInclude path) -> genLines' $ relative root path
 		_ -> return [line]
 
 parseFile :: TL.Text -> IO [Block]
@@ -173,10 +174,3 @@ parseFile root = io where
 			Right x -> return x
 			Left err -> error $ "lines parse failed: " ++ show err
 
-concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-concatMapM f xs = liftM concat $ mapM f xs
-
-replace :: Eq a => a -> [a] -> [a] -> [a]
-replace from to xs = flip concatMap xs $ \x -> if x == from
-	then to
-	else [x]

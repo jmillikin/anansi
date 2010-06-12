@@ -27,6 +27,8 @@ library
     , text >= 0.7 && < 0.8
     , transformers >= 0.2 && < 0.3
     , containers >= 0.1 && < 0.4
+    , filepath >= 1.1 && < 1.2
+    , directory >= 1.0 && < 1.1
 
   exposed-modules:
     Anansi
@@ -38,6 +40,7 @@ library
     Anansi.Parser
     Anansi.Tangle
     Anansi.Types
+    Anansi.Util
 
 executable anansi
   main-is: Main.hs

@@ -23,6 +23,9 @@ import Anansi.Types
 
 type ContentMap = Map.Map TL.Text [Content]
 
+data TangleState = TangleState TL.Text ContentMap
+type TangleT m a = S.StateT TangleState m a
+
 buildMacros :: [Block] -> ContentMap
 buildMacros blocks = S.execState (mapM_ accumMacro blocks) Map.empty
 
@@ -46,40 +49,36 @@ accumFile b = case b of
 		files <- S.get
 		S.put $ Map.insertWith accum name content files
 
-tangle :: Monad m => (TL.Text -> m ()) -> [Block] -> m ()
-tangle w blocks = S.evalStateT (mapM_ putFile files) ("", macros) where
+tangle :: Monad m => (TL.Text -> ((TL.Text -> m ()) -> m TangleState) -> m TangleState) -> [Block] -> m ()
+tangle open blocks = S.evalStateT (mapM_ putFile files) (TangleState "" macros) where
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks
 	files = Map.toAscList fileMap
 	
 	putFile (path, content) = do
-		lift $ do
-			w "\n"
-			w path
-			w "\n"
-			w $ TL.replicate (TL.length path) "="
-			w "\n"
-			
-		mapM_ putContent content
-		
-	putContent (ContentText t) = do
-		(indent, _) <- S.get
-		lift $ do
-			w indent
-			w t
-			w "\n"
-			
-	putContent (ContentMacro indent name) = addIndent putMacro where
-		addIndent m = do
-			(old, macros) <- S.get
-			S.put (TL.append old indent, macros)
-			m
-			S.put (old, macros)
-		putMacro = lookupMacro name >>= mapM_ putContent
+		state <- S.get
+		newState <- lift $ open path $ \w -> S.execStateT (mapM_ (putContent w) content) state
+		S.put newState
 
-lookupMacro :: Monad m => TL.Text -> S.StateT (TL.Text, ContentMap) m [Content]
+putContent :: Monad m => (TL.Text -> m ()) -> Content -> TangleT m ()
+putContent w (ContentText t) = do
+	TangleState indent _ <- S.get
+	lift $ do
+		w indent
+		w t
+		w "\n"
+
+putContent w (ContentMacro indent name) = addIndent putMacro where
+	addIndent m = do
+		TangleState old macros <- S.get
+		S.put $ TangleState (TL.append old indent) macros
+		m
+		S.put $ TangleState old macros
+	putMacro = lookupMacro name >>= mapM_ (putContent w)
+
+lookupMacro :: Monad m => TL.Text -> TangleT m [Content]
 lookupMacro name = do
-	(_, macros) <- S.get
+	TangleState _ macros <- S.get
 	case Map.lookup name macros of
 		Nothing -> error $ "unknown macro: " ++ show name
 		Just content -> return content
