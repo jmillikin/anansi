@@ -44,7 +44,7 @@ loomXHTML' wbytes bs = putHeader >> mapM_ putBlock bs >> putFooter where
 	putFooter = w "</body></html>"
 	
 	putBlock b = case b of
-		BlockText text -> w $ escape text
+		BlockText text -> w text
 		BlockFile path content -> let
 			label = TL.concat ["<b>\xBB ", escape path, "</b>"]
 			in putContent label content
