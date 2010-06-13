@@ -34,6 +34,7 @@ library
     Anansi
     Anansi.Loom.Debug
     Anansi.Loom.XHTML
+    Anansi.Loom.LaTeX
 
   other-modules:
     Anansi.Loom

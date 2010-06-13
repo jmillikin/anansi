@@ -19,6 +19,7 @@ module Main (main) where
 import Anansi
 import Anansi.Loom.Debug
 import Anansi.Loom.XHTML
+import Anansi.Loom.LaTeX
 import Anansi.Util
 
 import Control.Monad (unless)
@@ -86,8 +87,7 @@ main = do
 		Tangle -> case path of
 			"" -> tangle debugTangle blocks
 			_ -> tangle (realTangle path) blocks
-		Weave -> withFile path $ \h -> weave loomDebug (BL.hPut h) blocks
-	--weave loomXHTML (BL.hPut h) blocks
+		Weave -> withFile path $ \h -> weave loomLaTeX (BL.hPut h) blocks
 
 debugTangle :: TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
 debugTangle path io = do
