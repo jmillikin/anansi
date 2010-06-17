@@ -57,8 +57,8 @@ loomXHTML' wbytes bs = putHeader >> mapM_ putBlock bs >> putFooter where
 		w label
 		w "\n"
 		forM_ cs $ \c -> case c of
-			ContentText text -> w . escape $ TL.append text "\n"
-			ContentMacro indent name -> w $ formatMacro indent name
+			ContentText _ text -> w . escape $ TL.append text "\n"
+			ContentMacro _ indent name -> w $ formatMacro indent name
 		w "</pre>"
 
 formatMacro :: TL.Text -> TL.Text -> TL.Text

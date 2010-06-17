@@ -42,12 +42,17 @@ data Command
 	deriving (Show)
 
 data Line
-	= LineCommand Command
-	| LineText TL.Text
+	= LineCommand Position Command
+	| LineText Position TL.Text
 	deriving (Show)
 
 untilChar :: Char -> P.Parsec String u TL.Text
 untilChar c = TL.pack <$> P.manyTill P.anyChar (P.try (P.char c))
+
+getPosition :: Monad m => P.ParsecT s u m Position
+getPosition = do
+	pos <- P.getPosition
+	return $ Position (TL.pack (P.sourceName pos)) (toInteger (P.sourceLine pos))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -59,11 +64,13 @@ parseLine :: P.Parsec String u Line
 parseLine = command <|> text where
 	command = do
 		P.char ':'
-		LineCommand <$> parseCommand
+		pos <- getPosition
+		LineCommand pos <$> parseCommand
 	
 	text = do
+		pos <- getPosition
 		line <- untilChar '\n'
-		return . LineText $ TL.append line "\n"
+		return . LineText pos $ TL.append line "\n"
 
 parseCommand :: P.Parsec String u Command
 parseCommand = parsed where
@@ -107,8 +114,8 @@ parseBlocks :: [Line] -> Maybe (Block, [Line])
 parseBlocks [] = Nothing
 parseBlocks (line:xs) = parsed where
 	parsed = case line of
-		LineText text -> Just (BlockText text, xs)
-		LineCommand cmd -> case cmd of
+		LineText _ text -> Just (BlockText text, xs)
+		LineCommand _ cmd -> case cmd of
 			CommandFile path -> parseContent (BlockFile path) xs
 			CommandDefine name -> parseContent (BlockDefine name) xs
 			CommandColon -> Just (BlockText ":", xs)
@@ -120,32 +127,32 @@ parseContent :: ([Content] -> Block) -> [Line] -> Maybe (Block, [Line])
 parseContent block = parse [] where
 	parse acc [] = Just (block acc, [])
 	parse acc (line:xs) = case line of
-		LineText text -> parse (acc ++ [parse' text]) xs
-		LineCommand CommandEndBlock -> Just (block acc, xs)
-		LineCommand _ -> error $ "unexpected line: " ++ show line
+		LineText pos text -> parse (acc ++ [parse' pos text]) xs
+		LineCommand _ CommandEndBlock -> Just (block acc, xs)
+		LineCommand _ _ -> error $ "unexpected line: " ++ show line
 	
-	parse' text = case P.parse parser "" (TL.unpack text) of
+	parse' pos text = case P.parse (parser pos) "" (TL.unpack text) of
 		Right content -> content
 		Left err -> error $ "content parse failed (text = " ++ show text ++ "): " ++ show err
 	
-	parser = do
-		content <- contentMacro <|> contentText
+	parser pos = do
+		content <- contentMacro pos <|> contentText pos
 		P.optional $ P.char '\n'
 		P.eof
 		return content
 	
-	contentMacro = do
+	contentMacro pos = do
 		(indent, c) <- P.try $ do
 			indent <- P.many $ P.satisfy isSpace
 			P.char '|'
 			c <- P.satisfy (not . isSpace)
 			return (indent, c)
 		name <- untilChar '|'
-		return $ ContentMacro (TL.pack indent) (TL.strip (TL.cons c name))
+		return $ ContentMacro pos (TL.pack indent) (TL.strip (TL.cons c name))
 	
-	contentText = do
+	contentText pos = do
 		text <- untilChar '\n'
-		return . ContentText $ text
+		return . ContentText pos $ text
 
 type FilePath = TL.Text
 type FileMap = Map.Map FilePath [Line]
@@ -157,7 +164,7 @@ genLines getLines = genLines' where
 	relative x y = TL.pack $ replaceFileName (TL.unpack x) (TL.unpack y)
 	
 	resolveIncludes root line = case line of
-		LineCommand (CommandInclude path) -> genLines' $ relative root path
+		LineCommand _ (CommandInclude path) -> genLines' $ relative root path
 		_ -> return [line]
 
 parseFile :: TL.Text -> IO [Block]
@@ -169,8 +176,9 @@ parseFile root = io where
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
 		-- TODO: encode 'path' into UTF-8?
-		bytes <- B.readFile $ TL.unpack path
-		case P.parse parseLines "" (T.unpack $ TE.decodeUtf8 bytes) of
+		let path' = TL.unpack path
+		bytes <- B.readFile path'
+		case P.parse parseLines path' (T.unpack $ TE.decodeUtf8 bytes) of
 			Right x -> return x
 			Left err -> error $ "lines parse failed: " ++ show err
 

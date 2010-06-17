@@ -46,8 +46,8 @@ loomLaTeX' wbytes bs = mapM_ putBlock bs where
 			w "\\nwendcode{}\n"
 	
 	putContent cs = forM_ cs $ \c -> case c of
-		ContentText text -> w . escape $ TL.append text "\n"
-		ContentMacro indent name -> w $ formatMacro indent name
+		ContentText _ text -> w . escape $ TL.append text "\n"
+		ContentMacro _ indent name -> w $ formatMacro indent name
 		
 formatMacro :: TL.Text -> TL.Text -> TL.Text
 formatMacro indent name = TL.concat [indent, "\\LA{}", escape name, "\\RA{}\n"]

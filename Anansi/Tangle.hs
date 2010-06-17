@@ -23,7 +23,7 @@ import Anansi.Types
 
 type ContentMap = Map.Map TL.Text [Content]
 
-data TangleState = TangleState TL.Text ContentMap
+data TangleState = TangleState Position TL.Text ContentMap
 type TangleT m a = S.StateT TangleState m a
 
 buildMacros :: [Block] -> ContentMap
@@ -45,12 +45,12 @@ accumFile b = case b of
 	BlockText _ -> return ()
 	BlockDefine _ _ -> return ()
 	BlockFile name content -> do
-		let accum new old = old ++ new ++ [ContentText "\n"]
+		let accum new old = old ++ new
 		files <- S.get
 		S.put $ Map.insertWith accum name content files
 
 tangle :: Monad m => (TL.Text -> ((TL.Text -> m ()) -> m TangleState) -> m TangleState) -> [Block] -> m ()
-tangle open blocks = S.evalStateT (mapM_ putFile files) (TangleState "" macros) where
+tangle open blocks = S.evalStateT (mapM_ putFile files) (TangleState (Position "" 0) "" macros) where
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks
 	files = Map.toAscList fileMap
@@ -61,24 +61,38 @@ tangle open blocks = S.evalStateT (mapM_ putFile files) (TangleState "" macros) 
 		S.put newState
 
 putContent :: Monad m => (TL.Text -> m ()) -> Content -> TangleT m ()
-putContent w (ContentText t) = do
-	TangleState indent _ <- S.get
+putContent w (ContentText pos t) = do
+	TangleState _ indent _ <- S.get
+	putPosition w pos
 	lift $ do
 		w indent
 		w t
 		w "\n"
 
-putContent w (ContentMacro indent name) = addIndent putMacro where
+putContent w (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
-		TangleState old macros <- S.get
-		S.put $ TangleState (TL.append old indent) macros
+		TangleState lastPos old macros <- S.get
+		S.put $ TangleState lastPos (TL.append old indent) macros
 		m
-		S.put $ TangleState old macros
-	putMacro = lookupMacro name >>= mapM_ (putContent w)
+		TangleState newPos _ _ <- S.get
+		S.put $ TangleState newPos old macros
+	putMacro = do
+		putPosition w pos
+		lookupMacro name >>= mapM_ (putContent w)
+
+putPosition :: Monad m => (TL.Text -> m ()) -> Position -> TangleT m ()
+putPosition w pos = do
+	TangleState lastPos indent macros <- S.get
+	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
+	let line = "\n#line " ++ show (positionLine pos) ++ " " ++ show (positionFile pos) ++ "\n"
+	S.put $ TangleState pos indent macros
+	if pos == expectedPos
+		then return ()
+		else lift $ w $ TL.pack line
 
 lookupMacro :: Monad m => TL.Text -> TangleT m [Content]
 lookupMacro name = do
-	TangleState _ macros <- S.get
+	TangleState _ _ macros <- S.get
 	case Map.lookup name macros of
 		Nothing -> error $ "unknown macro: " ++ show name
 		Just content -> return content

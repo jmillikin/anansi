@@ -16,6 +16,7 @@
 module Anansi.Types
 	( Block (..)
 	, Content (..)
+	, Position (..)
 	) where
 import Data.Text.Lazy (Text)
 
@@ -26,6 +27,12 @@ data Block
 	deriving (Show)
 
 data Content
-	= ContentText Text
-	| ContentMacro Text Text
+	= ContentText Position Text
+	| ContentMacro Position Text Text
 	deriving (Show)
+
+data Position = Position
+	{ positionFile :: Text
+	, positionLine :: Integer
+	}
+	deriving (Show, Eq)
