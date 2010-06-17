@@ -22,26 +22,12 @@ import Control.Monad (forM_)
 import Anansi.Types
 import Anansi.Loom
 
-header :: TL.Text
-header = "<?xml version='1.0' encoding='utf-8'?>\n\
-	\<!DOCTYPE html PUBLIC \"-//W3C//DTD XHTML 1.1//EN\" \
-	\\"http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd\">\n\
-	\<html xmlns='http://www.w3.org/1999/xhtml' xml:lang='en'>\n\
-	\<head>\n"
-
 loomXHTML :: Monad m => Loom m
 loomXHTML = Loom loomXHTML'
 
 loomXHTML' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
-loomXHTML' wbytes bs = putHeader >> mapM_ putBlock bs >> putFooter where
+loomXHTML' wbytes = mapM_ putBlock where
 	w = wbytes . encodeUtf8
-	
-	putHeader = do
-		w header
-		w "<title>title goes here</title>\n"
-		w "</head><body>\n"
-	
-	putFooter = w "</body></html>"
 	
 	putBlock b = case b of
 		BlockText text -> w text
