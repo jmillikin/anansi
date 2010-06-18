@@ -32,10 +32,10 @@ loomHTML' wbytes = mapM_ putBlock where
 	putBlock b = case b of
 		BlockText text -> w text
 		BlockFile path content -> let
-			label = TL.concat ["<b>\xBB ", escape path, "</b>"]
+			label = TL.concat ["<b>&#xBB; ", escape path, "</b>"]
 			in putContent label content
 		BlockDefine name content -> let
-			label = TL.concat ["<b>\xAB", escape name, "\xBB</b>"]
+			label = TL.concat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
 			in putContent label content
 	
 	putContent label cs = do
@@ -48,7 +48,7 @@ loomHTML' wbytes = mapM_ putBlock where
 		w "</pre>"
 
 formatMacro :: TL.Text -> TL.Text -> TL.Text
-formatMacro indent name = TL.concat [indent, "<i>\xAB", escape name, "\xBB</i>\n"]
+formatMacro indent name = TL.concat [indent, "<i>&#xAB;", escape name, "&#xBB;</i>\n"]
 
 escape :: TL.Text -> TL.Text
 escape = TL.concatMap $ \c -> case c of
