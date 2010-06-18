@@ -17,7 +17,7 @@
 module Anansi.Loom.HTML (loomHTML) where
 import qualified Data.Text.Lazy as TL
 import Control.Monad (forM_)
-import Control.Monad.Trans.Writer (tell)
+import Control.Monad.Writer (tell)
 import Anansi.Types
 import Anansi.Loom
 

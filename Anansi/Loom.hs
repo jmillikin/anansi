@@ -16,7 +16,7 @@
 module Anansi.Loom
 	( Loom (..)
 	) where
-import Control.Monad.Trans.Writer
+import Control.Monad.Writer
 import Data.Text.Lazy (Text)
 import Anansi.Types
 

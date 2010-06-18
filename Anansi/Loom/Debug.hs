@@ -17,7 +17,7 @@
 module Anansi.Loom.Debug (loomDebug) where
 import Data.Text.Lazy (pack)
 import Control.Monad (forM_)
-import Control.Monad.Trans.Writer (tell)
+import Control.Monad.Writer (tell)
 import Anansi.Loom
 
 loomDebug :: Loom

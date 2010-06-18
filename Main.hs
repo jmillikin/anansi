@@ -23,9 +23,10 @@ import Anansi.Loom.LaTeX
 import Anansi.Util
 
 import Control.Monad (unless)
-import Control.Monad.Trans.Writer
+import Control.Monad.Writer
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Text.Lazy as TL
+import qualified Data.Text.Lazy.IO as TLIO
 import Data.Text.Encoding (encodeUtf8)
 import qualified Data.ByteString.Lazy as BL
 
@@ -110,18 +111,18 @@ main = do
 				texts = execWriter $ loomWeave loom blocks
 				in withFile path $ \h -> BL.hPut h $ lazyUtf8 texts
 
-debugTangle :: TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
-debugTangle path io = do
+debugTangle :: TL.Text -> TL.Text -> IO ()
+debugTangle path text = do
 	putStr "\n"
-	putStrLn $ TL.unpack path
+	TLIO.putStrLn path
 	putStrLn $ replicate (fromIntegral (TL.length path)) '='
-	io (putStr . TL.unpack)
+	TLIO.putStr text
 
-realTangle :: TL.Text -> TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
-realTangle root path io = do
+realTangle :: TL.Text -> TL.Text -> TL.Text -> IO ()
+realTangle root path text = do
 	let fullpath = combine (TL.unpack root) (TL.unpack path)
 	createDirectoryIfMissing True $ takeDirectory fullpath
-	withBinaryFile fullpath WriteMode $ \h -> io (hPutStr h . TL.unpack)
+	withBinaryFile fullpath WriteMode $ \h -> BL.hPut h $ lazyUtf8 text
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
 parseInputs inputs = do
