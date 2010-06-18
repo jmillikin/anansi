@@ -39,6 +39,7 @@ data Output = Tangle | Weave
 data Option
 	= OptionOutput Output
 	| OptionOutputPath TL.Text
+	| OptionLoom TL.Text
 
 optionInfo :: [OptDescr Option]
 optionInfo =
@@ -48,6 +49,8 @@ optionInfo =
 	  "Generate woven markup"
 	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . TL.pack) "PATH")
 	  "Output path (directory for tangle, file for weave)"
+	, Option ['l'] ["loom"] (ReqArg (OptionLoom . TL.pack) "NAME")
+	  "Which loom should be used to weave output"
 	]
 
 usage :: String -> String
@@ -70,6 +73,17 @@ withFile path io = case path of
 	"" -> io stdout
 	_ -> withBinaryFile (TL.unpack path) WriteMode io
 
+looms :: Monad m => [(TL.Text, Loom m)]
+looms = [(loomName l, l) | l <- [loomLaTeX, loomXHTML, loomDebug]]
+
+getLoom :: Monad m => [Option] -> Loom m
+getLoom [] = loomLaTeX
+getLoom (x:xs) = case x of
+	OptionLoom name -> case lookup name looms of
+		Just loom -> loom
+		Nothing -> error $ "Unknown loom: " ++ show name
+	_ -> getLoom xs
+
 main :: IO ()
 main = do
 	args <- getArgs
@@ -81,6 +95,7 @@ main = do
 		exitFailure
 	
 	let path = getPath options
+	let loom = getLoom options
 	
 	parsed <- parseInputs inputs
 	case parsed of
@@ -89,7 +104,7 @@ main = do
 			Tangle -> case path of
 				"" -> tangle debugTangle blocks
 				_ -> tangle (realTangle path) blocks
-			Weave -> withFile path $ \h -> weave loomLaTeX (BL.hPut h) blocks
+			Weave -> withFile path $ \h -> loomWeave loom (BL.hPut h) blocks
 
 debugTangle :: TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
 debugTangle path io = do

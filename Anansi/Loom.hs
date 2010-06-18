@@ -17,6 +17,10 @@ module Anansi.Loom
 	( Loom (..)
 	) where
 import Anansi.Types
+import Data.Text.Lazy (Text)
 import Data.ByteString.Lazy (ByteString)
 
-data Loom m = Loom { weave :: (ByteString -> m ()) -> [Block] -> m () }
+data Loom m = Loom
+	{ loomName :: Text
+	, loomWeave :: (ByteString -> m ()) -> [Block] -> m ()
+	}

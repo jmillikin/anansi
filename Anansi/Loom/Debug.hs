@@ -20,7 +20,7 @@ import Control.Monad (forM_)
 import Anansi.Loom
 
 loomDebug :: Monad m => Loom m
-loomDebug = Loom $ \w blocks -> do
+loomDebug = Loom "debug" $ \w blocks -> do
 	w "\nweaving\n"
 	w "==========================\n"
 	forM_ blocks $ \b -> do

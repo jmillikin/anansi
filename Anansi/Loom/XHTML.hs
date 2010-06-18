@@ -23,7 +23,7 @@ import Anansi.Types
 import Anansi.Loom
 
 loomXHTML :: Monad m => Loom m
-loomXHTML = Loom loomXHTML'
+loomXHTML = Loom "xhtml" loomXHTML'
 
 loomXHTML' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
 loomXHTML' wbytes = mapM_ putBlock where

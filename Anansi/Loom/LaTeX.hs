@@ -23,7 +23,7 @@ import Anansi.Types
 import Anansi.Loom
 
 loomLaTeX :: Monad m => Loom m
-loomLaTeX = Loom loomLaTeX'
+loomLaTeX = Loom "latex" loomLaTeX'
 
 loomLaTeX' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
 loomLaTeX' wbytes bs = mapM_ putBlock bs where
