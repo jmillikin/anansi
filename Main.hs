@@ -18,7 +18,7 @@ module Main (main) where
 
 import Anansi
 import Anansi.Loom.Debug
-import Anansi.Loom.XHTML
+import Anansi.Loom.HTML
 import Anansi.Loom.LaTeX
 import Anansi.Util
 
@@ -74,7 +74,7 @@ withFile path io = case path of
 	_ -> withBinaryFile (TL.unpack path) WriteMode io
 
 looms :: Monad m => [(TL.Text, Loom m)]
-looms = [(loomName l, l) | l <- [loomLaTeX, loomXHTML, loomDebug]]
+looms = [(loomName l, l) | l <- [loomLaTeX, loomHTML, loomDebug]]
 
 getLoom :: Monad m => [Option] -> Loom m
 getLoom [] = loomLaTeX

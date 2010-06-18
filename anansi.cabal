@@ -33,7 +33,7 @@ library
   exposed-modules:
     Anansi
     Anansi.Loom.Debug
-    Anansi.Loom.XHTML
+    Anansi.Loom.HTML
     Anansi.Loom.LaTeX
 
   other-modules:

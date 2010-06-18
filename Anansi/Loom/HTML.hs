@@ -14,7 +14,7 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- 
 {-# LANGUAGE OverloadedStrings #-}
-module Anansi.Loom.XHTML (loomXHTML) where
+module Anansi.Loom.HTML (loomHTML) where
 import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy as TL
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -22,11 +22,11 @@ import Control.Monad (forM_)
 import Anansi.Types
 import Anansi.Loom
 
-loomXHTML :: Monad m => Loom m
-loomXHTML = Loom "xhtml" loomXHTML'
+loomHTML :: Monad m => Loom m
+loomHTML = Loom "html" loomHTML'
 
-loomXHTML' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
-loomXHTML' wbytes = mapM_ putBlock where
+loomHTML' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
+loomHTML' wbytes = mapM_ putBlock where
 	w = wbytes . encodeUtf8
 	
 	putBlock b = case b of
