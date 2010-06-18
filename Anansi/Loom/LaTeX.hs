@@ -15,39 +15,33 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Loom.LaTeX (loomLaTeX) where
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Control.Monad (forM_)
+import Control.Monad.Trans.Writer (tell)
 import Anansi.Types
 import Anansi.Loom
 
-loomLaTeX :: Monad m => Loom m
-loomLaTeX = Loom "latex" loomLaTeX'
-
-loomLaTeX' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
-loomLaTeX' wbytes bs = mapM_ putBlock bs where
-	w = wbytes . encodeUtf8
-	
+loomLaTeX :: Loom
+loomLaTeX = Loom "latex" $ mapM_ putBlock where
 	putBlock b = case b of
-		BlockText text -> w text
+		BlockText text -> tell text
 		BlockFile path content -> do
-			w "\\nwbegincode{0}\\moddef{"
-			w $ escape path
-			w "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
+			tell "\\nwbegincode{0}\\moddef{"
+			tell $ escape path
+			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
-			w "\\nwendcode{}\n"
+			tell "\\nwendcode{}\n"
 			
 		BlockDefine name content -> do
-			w "\\nwbegincode{0}\\moddef{"
-			w $ escape name
-			w "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
+			tell "\\nwbegincode{0}\\moddef{"
+			tell $ escape name
+			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
-			w "\\nwendcode{}\n"
+			tell "\\nwendcode{}\n"
 	
 	putContent cs = forM_ cs $ \c -> case c of
-		ContentText _ text -> w . escape $ TL.append text "\n"
-		ContentMacro _ indent name -> w $ formatMacro indent name
+		ContentText _ text -> tell . escape $ TL.append text "\n"
+		ContentMacro _ indent name -> tell $ formatMacro indent name
 		
 formatMacro :: TL.Text -> TL.Text -> TL.Text
 formatMacro indent name = TL.concat [indent, "\\LA{}", escape name, "\\RA{}\n"]

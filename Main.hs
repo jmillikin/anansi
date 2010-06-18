@@ -23,8 +23,10 @@ import Anansi.Loom.LaTeX
 import Anansi.Util
 
 import Control.Monad (unless)
+import Control.Monad.Trans.Writer
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Text.Lazy as TL
+import Data.Text.Encoding (encodeUtf8)
 import qualified Data.ByteString.Lazy as BL
 
 import System.Console.GetOpt
@@ -73,10 +75,10 @@ withFile path io = case path of
 	"" -> io stdout
 	_ -> withBinaryFile (TL.unpack path) WriteMode io
 
-looms :: Monad m => [(TL.Text, Loom m)]
+looms :: [(TL.Text, Loom)]
 looms = [(loomName l, l) | l <- [loomLaTeX, loomHTML, loomDebug]]
 
-getLoom :: Monad m => [Option] -> Loom m
+getLoom :: [Option] -> Loom
 getLoom [] = loomLaTeX
 getLoom (x:xs) = case x of
 	OptionLoom name -> case lookup name looms of
@@ -104,7 +106,9 @@ main = do
 			Tangle -> case path of
 				"" -> tangle debugTangle blocks
 				_ -> tangle (realTangle path) blocks
-			Weave -> withFile path $ \h -> loomWeave loom (BL.hPut h) blocks
+			Weave -> let
+				texts = execWriter $ loomWeave loom blocks
+				in withFile path $ \h -> BL.hPut h $ lazyUtf8 texts
 
 debugTangle :: TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
 debugTangle path io = do
@@ -132,3 +136,6 @@ formatError err = concat [filename, ":", line, ": error: ", message] where
 	filename = TL.unpack $ positionFile pos
 	line = show $ positionLine pos
 	message = TL.unpack $ parseErrorMessage err
+
+lazyUtf8 :: TL.Text -> BL.ByteString
+lazyUtf8 = BL.fromChunks . map encodeUtf8 . TL.toChunks

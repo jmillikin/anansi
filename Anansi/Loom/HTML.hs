@@ -15,22 +15,16 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Loom.HTML (loomHTML) where
-import qualified Data.ByteString.Lazy as BL
 import qualified Data.Text.Lazy as TL
-import Data.Text.Lazy.Encoding (encodeUtf8)
 import Control.Monad (forM_)
+import Control.Monad.Trans.Writer (tell)
 import Anansi.Types
 import Anansi.Loom
 
-loomHTML :: Monad m => Loom m
-loomHTML = Loom "html" loomHTML'
-
-loomHTML' :: Monad m => (BL.ByteString -> m ()) -> [Block] -> m ()
-loomHTML' wbytes = mapM_ putBlock where
-	w = wbytes . encodeUtf8
-	
+loomHTML :: Loom
+loomHTML = Loom "html" $ mapM_ putBlock where
 	putBlock b = case b of
-		BlockText text -> w text
+		BlockText text -> tell text
 		BlockFile path content -> let
 			label = TL.concat ["<b>&#xBB; ", escape path, "</b>"]
 			in putContent label content
@@ -39,13 +33,13 @@ loomHTML' wbytes = mapM_ putBlock where
 			in putContent label content
 	
 	putContent label cs = do
-		w "<pre>"
-		w label
-		w "\n"
+		tell "<pre>"
+		tell label
+		tell "\n"
 		forM_ cs $ \c -> case c of
-			ContentText _ text -> w . escape $ TL.append text "\n"
-			ContentMacro _ indent name -> w $ formatMacro indent name
-		w "</pre>"
+			ContentText _ text -> tell . escape $ TL.append text "\n"
+			ContentMacro _ indent name -> tell $ formatMacro indent name
+		tell "</pre>"
 
 formatMacro :: TL.Text -> TL.Text -> TL.Text
 formatMacro indent name = TL.concat [indent, "<i>&#xAB;", escape name, "&#xBB;</i>\n"]

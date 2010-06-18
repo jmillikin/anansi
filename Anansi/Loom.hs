@@ -16,11 +16,11 @@
 module Anansi.Loom
 	( Loom (..)
 	) where
-import Anansi.Types
+import Control.Monad.Trans.Writer
 import Data.Text.Lazy (Text)
-import Data.ByteString.Lazy (ByteString)
+import Anansi.Types
 
-data Loom m = Loom
+data Loom = Loom
 	{ loomName :: Text
-	, loomWeave :: (ByteString -> m ()) -> [Block] -> m ()
+	, loomWeave :: [Block] -> Writer Text ()
 	}

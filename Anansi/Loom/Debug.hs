@@ -15,13 +15,14 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Loom.Debug (loomDebug) where
-import Data.ByteString.Lazy.Char8 (pack)
+import Data.Text.Lazy (pack)
 import Control.Monad (forM_)
+import Control.Monad.Trans.Writer (tell)
 import Anansi.Loom
 
-loomDebug :: Monad m => Loom m
-loomDebug = Loom "debug" $ \w blocks -> do
-	w "\nweaving\n"
-	w "==========================\n"
+loomDebug :: Loom
+loomDebug = Loom "debug" $ \blocks -> do
+	tell "\nweaving\n"
+	tell "==========================\n"
 	forM_ blocks $ \b -> do
-		w . pack $ show b ++ "\n"
+		tell . pack $ show b ++ "\n"
