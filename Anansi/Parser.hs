@@ -14,14 +14,18 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 module Anansi.Parser
-	( parseFile
+	( ParseError (..)
+	, parseFile
 	) where
 import Prelude hiding (FilePath)
 import Control.Applicative ((<|>), (<$>))
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.Trans.State as S
+import qualified Control.Exception as E
 import Data.List (unfoldr)
+import Data.Typeable (Typeable)
 import qualified Text.Parsec as P
 import qualified Data.ByteString as B
 import qualified Data.Text as T
@@ -31,6 +35,18 @@ import qualified Data.Map as Map
 import System.FilePath (replaceFileName)
 import Anansi.Types
 import Anansi.Util
+
+data ParseError = ParseError
+	{ parseErrorPosition :: Position
+	, parseErrorMessage :: TL.Text
+	}
+	deriving (Show)
+
+-- too lazy to write proper error handling
+data ParseExc = ParseExc ParseError
+	deriving (Typeable, Show)
+
+instance E.Exception ParseExc
 
 data Command
 	= CommandInclude TL.Text
@@ -102,7 +118,10 @@ parseCommand = parsed where
 		line <- untilChar '\n'
 		if TL.all isSpace line
 			then return $ CommandEndBlock
-			else error $ "unknown command: " ++ show (TL.append ":" line)
+			else do
+				pos <- getPosition
+				let msg = TL.pack $ "unknown command: " ++ show (TL.append ":" line)
+				E.throw $ ParseExc $ ParseError pos msg
 
 -- TODO: more unicode support
 isSpace :: Char -> Bool
@@ -110,30 +129,38 @@ isSpace ' ' = True
 isSpace '\t' = True
 isSpace _ = False
 
-parseBlocks :: [Line] -> Maybe (Block, [Line])
+parseBlocks :: [Line] -> Maybe (Either ParseError Block, [Line])
 parseBlocks [] = Nothing
 parseBlocks (line:xs) = parsed where
 	parsed = case line of
-		LineText _ text -> Just (BlockText text, xs)
-		LineCommand _ cmd -> case cmd of
-			CommandFile path -> parseContent (BlockFile path) xs
-			CommandDefine name -> parseContent (BlockDefine name) xs
-			CommandColon -> Just (BlockText ":", xs)
-			CommandEndBlock -> Just (BlockText "\n", xs)
-			CommandComment -> Just (BlockText "", xs)
-			CommandInclude _ -> error "unexpected CommandInclude"
+		LineText _ text -> Just (Right $ BlockText text, xs)
+		LineCommand pos cmd -> case cmd of
+			CommandFile path -> parseContent pos (BlockFile path) xs
+			CommandDefine name -> parseContent pos (BlockDefine name) xs
+			CommandColon -> Just (Right $ BlockText ":", xs)
+			CommandEndBlock -> Just (Right $ BlockText "\n", xs)
+			CommandComment -> Just (Right $ BlockText "", xs)
+			CommandInclude _ -> let
+				msg = "unexpected CommandInclude (internal error)"
+				in Just (Left $ ParseError pos msg, [])
 
-parseContent :: ([Content] -> Block) -> [Line] -> Maybe (Block, [Line])
-parseContent block = parse [] where
-	parse acc [] = Just (block acc, [])
+parseContent :: Position -> ([Content] -> Block) -> [Line] -> Maybe (Either ParseError Block, [Line])
+parseContent start block = parse [] where
+	parse acc [] = Just (Right $ block acc, [])
 	parse acc (line:xs) = case line of
-		LineText pos text -> parse (acc ++ [parse' pos text]) xs
-		LineCommand _ CommandEndBlock -> Just (block acc, xs)
-		LineCommand _ _ -> error $ "unexpected line: " ++ show line
+		LineText pos text -> case parse' pos text of
+			Left err -> Just (Left err, [])
+			Right parsed -> parse (acc ++ [parsed]) xs
+		LineCommand _ CommandEndBlock -> Just (Right $ block acc, xs)
+		LineCommand _ _ -> let
+			msg = "Unterminated content block"
+			in Just (Left $ ParseError start msg, [])
 	
 	parse' pos text = case P.parse (parser pos) "" (TL.unpack text) of
-		Right content -> content
-		Left err -> error $ "content parse failed (text = " ++ show text ++ "): " ++ show err
+		Right content -> Right content
+		Left err -> let
+			msg = TL.pack $ "Invalid content line " ++ show text ++ ": " ++ show err
+			in Left $ ParseError pos msg
 	
 	parser pos = do
 		content <- contentMacro pos <|> contentText pos
@@ -167,11 +194,13 @@ genLines getLines = genLines' where
 		LineCommand _ (CommandInclude path) -> genLines' $ relative root path
 		_ -> return [line]
 
-parseFile :: TL.Text -> IO [Block]
+parseFile :: TL.Text -> IO (Either ParseError [Block])
 parseFile root = io where
-	io = do
+	io = E.handle onError $ do
 		lines' <- S.evalStateT (genLines getLines root) Map.empty
-		return $ unfoldr parseBlocks lines'
+		return . catEithers $ unfoldr parseBlocks lines'
+	
+	onError (ParseExc err) = return $ Left err
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
@@ -180,5 +209,6 @@ parseFile root = io where
 		bytes <- B.readFile path'
 		case P.parse parseLines path' (T.unpack $ TE.decodeUtf8 bytes) of
 			Right x -> return x
-			Left err -> error $ "lines parse failed: " ++ show err
-
+			Left err -> let
+				msg = TL.pack $ "getLines parse failed (internal error): " ++ show err
+				in E.throw $ ParseExc $ ParseError (Position path 0) msg

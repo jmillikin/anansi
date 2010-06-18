@@ -80,14 +80,16 @@ main = do
 		hPutStrLn stderr $ usageInfo (usage name) optionInfo
 		exitFailure
 	
-	blocks <- concatMapM (parseFile . TL.pack) inputs
-	
 	let path = getPath options
-	case getOutput options of
-		Tangle -> case path of
-			"" -> tangle debugTangle blocks
-			_ -> tangle (realTangle path) blocks
-		Weave -> withFile path $ \h -> weave loomLaTeX (BL.hPut h) blocks
+	
+	parsed <- parseInputs inputs
+	case parsed of
+		Left err -> hPutStrLn stderr (formatError err)
+		Right blocks -> case getOutput options of
+			Tangle -> case path of
+				"" -> tangle debugTangle blocks
+				_ -> tangle (realTangle path) blocks
+			Weave -> withFile path $ \h -> weave loomLaTeX (BL.hPut h) blocks
 
 debugTangle :: TL.Text -> ((TL.Text -> IO ()) -> IO a) -> IO a
 debugTangle path io = do
@@ -101,3 +103,17 @@ realTangle root path io = do
 	let fullpath = combine (TL.unpack root) (TL.unpack path)
 	createDirectoryIfMissing True $ takeDirectory fullpath
 	withBinaryFile fullpath WriteMode $ \h -> io (hPutStr h . TL.unpack)
+
+parseInputs :: [String] -> IO (Either ParseError [Block])
+parseInputs inputs = do
+	eithers <- mapM (parseFile . TL.pack) inputs
+	return $ case catEithers eithers of
+		Left err -> Left err
+		Right bs -> Right $ concat bs
+
+formatError :: ParseError -> String
+formatError err = concat [filename, ":", line, ": error: ", message] where
+	pos = parseErrorPosition err
+	filename = TL.unpack $ positionFile pos
+	line = show $ positionLine pos
+	message = TL.unpack $ parseErrorMessage err

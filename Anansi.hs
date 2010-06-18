@@ -16,6 +16,8 @@
 module Anansi
 	( Block (..)
 	, Content (..)
+	, Position (..)
+	, ParseError (..)
 	, Loom (..)
 	, tangle
 	, parseFile
