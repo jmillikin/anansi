@@ -39,6 +39,7 @@ library
     Anansi.Loom.Debug
     Anansi.Loom.HTML
     Anansi.Loom.LaTeX
+    Anansi.Loom.NoWeb
     Anansi.Parser
     Anansi.Tangle
     Anansi.Types

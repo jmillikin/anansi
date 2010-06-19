@@ -14,44 +14,42 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 -- 
 {-# LANGUAGE OverloadedStrings #-}
-module Anansi.Loom.LaTeX (loomLaTeX) where
+module Anansi.Loom.NoWeb (loomNoWeb) where
 import qualified Data.Text.Lazy as TL
 import Control.Monad (forM_)
 import Control.Monad.Writer (tell)
 import Anansi.Types
 import Anansi.Loom
 
-loomLaTeX :: Loom
-loomLaTeX = Loom "latex" $ mapM_ putBlock where
+loomNoWeb :: Loom
+loomNoWeb = Loom "latex-noweb" $ mapM_ putBlock where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> do
-			tell "\\begin{alltt}\n"
-			tell "{\\bf\\(\\gg\\) "
+			tell "\\nwbegincode{0}\\moddef{"
 			tell $ escape path
-			tell "}\n"
+			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
-			tell "\\end{alltt}\n"
+			tell "\\nwendcode{}\n"
 			
 		BlockDefine name content -> do
-			tell "\\begin{alltt}\n"
-			tell "{\\bf\\(\\ll\\)"
+			tell "\\nwbegincode{0}\\moddef{"
 			tell $ escape name
-			tell "\\(\\gg\\)}\n"
+			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
-			tell "\\end{alltt}\n"
+			tell "\\nwendcode{}\n"
 	
 	putContent cs = forM_ cs $ \c -> case c of
 		ContentText _ text -> tell . escape $ TL.append text "\n"
 		ContentMacro _ indent name -> tell $ formatMacro indent name
 
 formatMacro :: TL.Text -> TL.Text -> TL.Text
-formatMacro indent name = TL.concat [escape indent, "|\\emph{", escape name, "}|\n"]
+formatMacro indent name = TL.concat [escape indent, "\\LA{}", escape name, "\\RA{}\n"]
 
 escape :: TL.Text -> TL.Text
 escape = TL.concatMap $ \c -> case c of
 	'\t' -> "        "
-	'\\' -> "\\textbackslash{}"
+	'\\' -> "\\\\"
 	'{' -> "\\{"
 	'}' -> "\\}"
 	_ -> TL.singleton c

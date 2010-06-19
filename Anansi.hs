@@ -26,6 +26,7 @@ module Anansi
 	, loomDebug
 	, loomHTML
 	, loomLaTeX
+	, loomNoWeb
 	
 	, tangle
 	) where
@@ -34,8 +35,9 @@ import Anansi.Loom
 import Anansi.Loom.Debug
 import Anansi.Loom.HTML
 import Anansi.Loom.LaTeX
+import Anansi.Loom.NoWeb
 import Anansi.Parser
 import Anansi.Tangle
 
 looms :: [Loom]
-looms = [loomDebug, loomHTML, loomLaTeX]
+looms = [loomDebug, loomHTML, loomLaTeX, loomNoWeb]
