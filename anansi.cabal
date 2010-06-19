@@ -33,12 +33,12 @@ library
 
   exposed-modules:
     Anansi
-    Anansi.Loom.Debug
-    Anansi.Loom.HTML
-    Anansi.Loom.LaTeX
 
   other-modules:
     Anansi.Loom
+    Anansi.Loom.Debug
+    Anansi.Loom.HTML
+    Anansi.Loom.LaTeX
     Anansi.Parser
     Anansi.Tangle
     Anansi.Types

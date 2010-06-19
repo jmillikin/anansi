@@ -17,9 +17,6 @@
 module Main (main) where
 
 import Anansi
-import Anansi.Loom.Debug
-import Anansi.Loom.HTML
-import Anansi.Loom.LaTeX
 import Anansi.Util
 
 import Control.Monad (unless)
@@ -76,13 +73,13 @@ withFile path io = case path of
 	"" -> io stdout
 	_ -> withBinaryFile (TL.unpack path) WriteMode io
 
-looms :: [(TL.Text, Loom)]
-looms = [(loomName l, l) | l <- [loomLaTeX, loomHTML, loomDebug]]
+loomMap :: [(TL.Text, Loom)]
+loomMap = [(loomName l, l) | l <- looms]
 
 getLoom :: [Option] -> Loom
 getLoom [] = loomLaTeX
 getLoom (x:xs) = case x of
-	OptionLoom name -> case lookup name looms of
+	OptionLoom name -> case lookup name loomMap of
 		Just loom -> loom
 		Nothing -> error $ "Unknown loom: " ++ show name
 	_ -> getLoom xs

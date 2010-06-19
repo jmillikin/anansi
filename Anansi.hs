@@ -17,12 +17,25 @@ module Anansi
 	( Block (..)
 	, Content (..)
 	, Position (..)
+	
 	, ParseError (..)
-	, Loom (..)
-	, tangle
 	, parseFile
+	
+	, Loom (..)
+	, looms
+	, loomDebug
+	, loomHTML
+	, loomLaTeX
+	
+	, tangle
 	) where
 import Anansi.Types
 import Anansi.Loom
+import Anansi.Loom.Debug
+import Anansi.Loom.HTML
+import Anansi.Loom.LaTeX
 import Anansi.Parser
 import Anansi.Tangle
+
+looms :: [Loom]
+looms = [loomDebug, loomHTML, loomLaTeX]
