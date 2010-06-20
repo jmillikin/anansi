@@ -119,7 +119,23 @@ realTangle :: TL.Text -> TL.Text -> TL.Text -> IO ()
 realTangle root path text = do
 	let fullpath = combine (TL.unpack root) (TL.unpack path)
 	createDirectoryIfMissing True $ takeDirectory fullpath
-	withBinaryFile fullpath WriteMode $ \h -> BL.hPut h $ lazyUtf8 text
+	let bytes = lazyUtf8 text
+	withBinaryFile fullpath ReadWriteMode $ \h -> do
+		equal <- fileContentsEqual h bytes
+		unless equal $ BL.hPut h bytes
+
+fileContentsEqual :: Handle -> BL.ByteString -> IO Bool
+fileContentsEqual h bytes = do
+	hSeek h SeekFromEnd 0
+	size <- hTell h
+	hSeek h AbsoluteSeek 0
+	
+	if size /= toInteger (BL.length bytes)
+		then return False
+		else do
+			-- FIXME: 'Int' overflow?
+			contents <- BL.hGet h (fromInteger size)
+			return $ bytes == contents
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
 parseInputs inputs = do
