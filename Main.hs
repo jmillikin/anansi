@@ -123,8 +123,8 @@ realTangle root path text = do
 	withBinaryFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
+			hSetFileSize h 0
 			BL.hPut h bytes
-			hSetFileSize h (toInteger (BL.length bytes))
 
 fileContentsEqual :: Handle -> BL.ByteString -> IO Bool
 fileContentsEqual h bytes = do
@@ -137,6 +137,7 @@ fileContentsEqual h bytes = do
 		else do
 			-- FIXME: 'Int' overflow?
 			contents <- BL.hGet h (fromInteger size)
+			hSeek h AbsoluteSeek 0
 			return $ bytes == contents
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
