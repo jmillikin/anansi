@@ -122,7 +122,9 @@ realTangle root path text = do
 	let bytes = lazyUtf8 text
 	withBinaryFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
-		unless equal $ BL.hPut h bytes
+		unless equal $ do
+			BL.hPut h bytes
+			hSetFileSize h (toInteger (BL.length bytes))
 
 fileContentsEqual :: Handle -> BL.ByteString -> IO Bool
 fileContentsEqual h bytes = do
