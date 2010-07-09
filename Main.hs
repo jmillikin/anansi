@@ -40,6 +40,7 @@ data Option
 	= OptionOutput Output
 	| OptionOutputPath TL.Text
 	| OptionLoom TL.Text
+	| OptionNoLines
 
 optionInfo :: [OptDescr Option]
 optionInfo =
@@ -51,6 +52,8 @@ optionInfo =
 	  "Output path (directory for tangle, file for weave)"
 	, Option ['l'] ["loom"] (ReqArg (OptionLoom . TL.pack) "NAME")
 	  "Which loom should be used to weave output"
+	, Option [] ["noline"] (NoArg OptionNoLines)
+	  "Disable generating #line declarations in tangled code"
 	]
 
 usage :: String -> String
@@ -84,6 +87,12 @@ getLoom (x:xs) = case x of
 		Nothing -> error $ "Unknown loom: " ++ show name
 	_ -> getLoom xs
 
+getEnableLines :: [Option] -> Bool
+getEnableLines [] = True
+getEnableLines (x:xs) = case x of
+	OptionNoLines -> False
+	_ -> getEnableLines xs
+
 main :: IO ()
 main = do
 	args <- getArgs
@@ -96,6 +105,7 @@ main = do
 	
 	let path = getPath options
 	let loom = getLoom options
+	let enableLines = getEnableLines options
 	
 	parsed <- parseInputs inputs
 	case parsed of
@@ -104,8 +114,8 @@ main = do
 			exitFailure
 		Right blocks -> case getOutput options of
 			Tangle -> case path of
-				"" -> tangle debugTangle blocks
-				_ -> tangle (realTangle path) blocks
+				"" -> tangle debugTangle enableLines blocks
+				_ -> tangle (realTangle path) enableLines blocks
 			Weave -> let
 				texts = execWriter $ loomWeave loom blocks
 				in withFile path $ \h -> BL.hPut h $ lazyUtf8 texts

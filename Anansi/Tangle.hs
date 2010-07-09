@@ -15,6 +15,7 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Tangle (tangle) where
+import Control.Monad (when)
 import Control.Monad.Trans.Class (lift)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
@@ -50,26 +51,30 @@ accumFile b = case b of
 		files <- S.get
 		S.put $ Map.insertWith accum name content files
 
-tangle :: Monad m => (TL.Text -> TL.Text -> m ()) -> [Block] -> m ()
-tangle writeFile' blocks = S.evalStateT (mapM_ putFile files) initState where
+tangle :: Monad m
+       => (TL.Text -> TL.Text -> m ())
+       -> Bool -- ^ Enable writing #line declarations
+       -> [Block]
+       -> m ()
+tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initState where
 	initState = (TangleState (Position "" 0) "" macros)
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks
 	files = Map.toAscList fileMap
 	
 	putFile (path, content) = do
-		text <- W.execWriterT (mapM_ putContent content)
+		text <- W.execWriterT (mapM_ (putContent enableLine) content)
 		lift $ writeFile' path text
 
-putContent :: Monad m => Content -> TangleT m ()
-putContent (ContentText pos t) = do
+putContent :: Monad m => Bool -> Content -> TangleT m ()
+putContent enableLine (ContentText pos t) = do
 	TangleState _ indent _ <- S.get
-	putPosition pos
+	when enableLine $ putPosition pos
 	W.tell indent
 	W.tell t
 	W.tell "\n"
 
-putContent (ContentMacro pos indent name) = addIndent putMacro where
+putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
 		TangleState lastPos old macros <- S.get
 		S.put $ TangleState lastPos (TL.append old indent) macros
@@ -77,8 +82,8 @@ putContent (ContentMacro pos indent name) = addIndent putMacro where
 		TangleState newPos _ _ <- S.get
 		S.put $ TangleState newPos old macros
 	putMacro = do
-		putPosition pos
-		lookupMacro name >>= mapM_ putContent
+		when enableLine $ putPosition pos
+		lookupMacro name >>= mapM_ (putContent enableLine)
 
 putPosition :: Monad m => Position -> TangleT m ()
 putPosition pos = do
