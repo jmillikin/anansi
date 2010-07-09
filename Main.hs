@@ -99,7 +99,9 @@ main = do
 	
 	parsed <- parseInputs inputs
 	case parsed of
-		Left err -> hPutStrLn stderr (formatError err)
+		Left err -> do
+			hPutStrLn stderr (formatError err)
+			exitFailure
 		Right blocks -> case getOutput options of
 			Tangle -> case path of
 				"" -> tangle debugTangle blocks
