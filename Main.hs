@@ -24,7 +24,7 @@ import Control.Monad.Writer
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
-import Data.Text.Encoding (encodeUtf8)
+import Data.Text.Lazy.Encoding (encodeUtf8)
 import qualified Data.ByteString.Lazy as BL
 
 import System.Console.GetOpt
@@ -118,7 +118,7 @@ main = do
 				_ -> tangle (realTangle path) enableLines blocks
 			Weave -> let
 				texts = execWriter $ loomWeave loom blocks
-				in withFile path $ \h -> BL.hPut h $ lazyUtf8 texts
+				in withFile path $ \h -> BL.hPut h $ encodeUtf8 texts
 
 debugTangle :: TL.Text -> TL.Text -> IO ()
 debugTangle path text = do
@@ -131,7 +131,7 @@ realTangle :: TL.Text -> TL.Text -> TL.Text -> IO ()
 realTangle root path text = do
 	let fullpath = combine (TL.unpack root) (TL.unpack path)
 	createDirectoryIfMissing True $ takeDirectory fullpath
-	let bytes = lazyUtf8 text
+	let bytes = encodeUtf8 text
 	withBinaryFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
@@ -165,6 +165,3 @@ formatError err = concat [filename, ":", line, ": error: ", message] where
 	filename = TL.unpack $ positionFile pos
 	line = show $ positionLine pos
 	message = TL.unpack $ parseErrorMessage err
-
-lazyUtf8 :: TL.Text -> BL.ByteString
-lazyUtf8 = BL.fromChunks . map encodeUtf8 . TL.toChunks
