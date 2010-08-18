@@ -54,4 +54,5 @@ escape = TL.concatMap $ \c -> case c of
 	'\\' -> "\\textbackslash{}"
 	'{' -> "\\{"
 	'}' -> "\\}"
+	'_' -> "\\_"
 	_ -> TL.singleton c
