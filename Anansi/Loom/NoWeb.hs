@@ -27,30 +27,42 @@ loomNoWeb = Loom "latex-noweb" $ mapM_ putBlock where
 		BlockText text -> tell text
 		BlockFile path content -> do
 			tell "\\nwbegincode{0}\\moddef{"
-			tell $ escape path
+			tell $ escapeText path
 			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
 			tell "\\nwendcode{}\n"
 			
 		BlockDefine name content -> do
 			tell "\\nwbegincode{0}\\moddef{"
-			tell $ escape name
+			tell $ escapeText name
 			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
 			tell "\\nwendcode{}\n"
 	
 	putContent cs = forM_ cs $ \c -> case c of
-		ContentText _ text -> tell . escape $ TL.append text "\n"
+		ContentText _ text -> tell . escapeCode $ TL.append text "\n"
 		ContentMacro _ indent name -> tell $ formatMacro indent name
 
 formatMacro :: TL.Text -> TL.Text -> TL.Text
-formatMacro indent name = TL.concat [escape indent, "\\LA{}", escape name, "\\RA{}\n"]
+formatMacro indent name = TL.concat [escapeCode indent, "\\LA{}", escapeText name, "\\RA{}\n"]
 
-escape :: TL.Text -> TL.Text
-escape = TL.concatMap $ \c -> case c of
+escapeCode :: TL.Text -> TL.Text
+escapeCode = TL.concatMap $ \c -> case c of
 	'\t' -> "        "
 	'\\' -> "\\\\"
 	'{' -> "\\{"
 	'}' -> "\\}"
 	'_' -> "\\_"
+	_ -> TL.singleton c
+
+escapeText :: TL.Text -> TL.Text
+escapeText = TL.concatMap $ \c -> case c of
+	'\t' -> "        "
+	'\\' -> "\\\\"
+	'{' -> "\\{"
+	'}' -> "\\}"
+	'_' -> "\\_"
+	'<' -> "{$<$}"
+	'>' -> "{$>$}"
+	'$' -> "\\$"
 	_ -> TL.singleton c
