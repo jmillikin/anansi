@@ -10,12 +10,12 @@ cabal-version: >=1.6
 category: Development
 stability: experimental
 bug-reports: mailto:jmillikin@gmail.com
-homepage: http://ianen.org/haskell/anansi/
+homepage: http://john-millikin.com/software/anansi/
 tested-with: GHC==6.12.1
 
 source-repository head
   type: bazaar
-  location: http://ianen.org/haskell/anansi/
+  location: http://john-millikin.com/software/anansi/
 
 library
   ghc-options: -Wall -fno-warn-unused-do-bind
