@@ -16,7 +16,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Tangle (tangle) where
 import Control.Monad (when)
-import Control.Monad.Trans.Class (lift)
+import Control.Monad.Trans (lift)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 import qualified Data.Text.Lazy as TL

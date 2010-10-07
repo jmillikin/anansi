@@ -21,8 +21,8 @@ module Anansi.Parser
 	) where
 import Prelude hiding (FilePath)
 import Control.Applicative ((<|>), (<$>))
-import Control.Monad.Trans.Class (lift)
-import qualified Control.Monad.Trans.State as S
+import Control.Monad.Trans (lift)
+import qualified Control.Monad.State as S
 import qualified Control.Exception as E
 import Data.List (unfoldr)
 import Data.Typeable (Typeable)

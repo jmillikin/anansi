@@ -21,7 +21,7 @@ import Anansi.Util
 
 import Control.Monad (unless)
 import Control.Monad.Writer
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import Data.Text.Lazy.Encoding (encodeUtf8)
