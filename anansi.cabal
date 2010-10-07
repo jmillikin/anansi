@@ -14,7 +14,7 @@ homepage: http://ianen.org/haskell/anansi/
 tested-with: GHC==6.12.1
 
 source-repository head
-  type: darcs
+  type: bazaar
   location: http://ianen.org/haskell/anansi/
 
 library
