@@ -17,11 +17,8 @@
 module Main (main) where
 
 import Anansi
-import Anansi.Util
 
-import Control.Monad (unless)
 import Control.Monad.Writer
-import Control.Monad.Trans (MonadIO, liftIO)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -165,3 +162,10 @@ formatError err = concat [filename, ":", line, ": error: ", message] where
 	filename = TL.unpack $ positionFile pos
 	line = show $ positionLine pos
 	message = TL.unpack $ parseErrorMessage err
+
+catEithers :: [Either e a] -> Either e [a]
+catEithers = cat' [] where
+	cat' acc [] = Right $ reverse acc
+	cat' acc (e:es) = case e of
+		Left err -> Left err
+		Right x -> cat' (x : acc) es
