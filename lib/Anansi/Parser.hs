@@ -32,7 +32,8 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
-import System.FilePath (replaceFileName)
+import System.FilePath (FilePath)
+import qualified System.FilePath.CurrentOS as FP
 import Anansi.Types
 import Anansi.Util
 
@@ -68,7 +69,7 @@ untilChar c = TL.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 getPosition :: Monad m => P.ParsecT s u m Position
 getPosition = do
 	pos <- P.getPosition
-	return $ Position (TL.pack (P.sourceName pos)) (toInteger (P.sourceLine pos))
+	return $ Position (FP.fromString (P.sourceName pos)) (toInteger (P.sourceLine pos))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -181,20 +182,25 @@ parseContent start block = parse [] where
 		text <- untilChar '\n'
 		return . ContentText pos $ text
 
-type FilePath = TL.Text
 type FileMap = Map.Map FilePath [Line]
 
 genLines :: Monad m => (FilePath -> m [Line]) -> FilePath -> S.StateT FileMap m [Line]
 genLines getLines = genLines' where
 	genLines' path = lift (getLines path) >>= concatMapM (resolveIncludes path)
 	
-	relative x y = TL.pack $ replaceFileName (TL.unpack x) (TL.unpack y)
+	textToPath :: TL.Text -> FilePath
+	textToPath = FP.fromString . TL.unpack
+	
+	relative :: FilePath -> TL.Text -> FilePath
+	relative x y = FP.append (FP.parent x) (textToPath y)
+	
+	-- relative x y = TL.pack $ replaceFileName (TL.unpack x) (TL.unpack y)
 	
 	resolveIncludes root line = case line of
 		LineCommand _ (CommandInclude path) -> genLines' $ relative root path
 		_ -> return [line]
 
-parseFile :: TL.Text -> IO (Either ParseError [Block])
+parseFile :: FilePath -> IO (Either ParseError [Block])
 parseFile root = io where
 	io = E.handle onError $ do
 		lines' <- S.evalStateT (genLines getLines root) Map.empty
@@ -204,10 +210,10 @@ parseFile root = io where
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
-		-- TODO: encode 'path' into UTF-8?
-		let path' = TL.unpack path
-		bytes <- B.readFile path'
-		case P.parse parseLines path' (T.unpack $ TE.decodeUtf8 bytes) of
+		let strPath = FP.toString path
+		bytes <- B.readFile strPath
+		let contents = T.unpack (TE.decodeUtf8 bytes)
+		case P.parse parseLines strPath contents of
 			Right x -> return x
 			Left err -> let
 				msg = TL.pack $ "getLines parse failed (internal error): " ++ show err

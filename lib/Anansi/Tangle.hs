@@ -15,12 +15,16 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Anansi.Tangle (tangle) where
+
+import Prelude hiding (FilePath)
 import Control.Monad (when)
 import Control.Monad.Trans (lift)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
+import System.FilePath (FilePath)
+import qualified System.FilePath.CurrentOS as FP
 import Anansi.Types
 
 type ContentMap = Map.Map TL.Text [Content]
@@ -52,7 +56,7 @@ accumFile b = case b of
 		S.put $ Map.insertWith accum name content files
 
 tangle :: Monad m
-       => (TL.Text -> TL.Text -> m ())
+       => (FilePath -> TL.Text -> m ())
        -> Bool -- ^ Enable writing #line declarations
        -> [Block]
        -> m ()
@@ -64,7 +68,7 @@ tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initSta
 	
 	putFile (path, content) = do
 		text <- W.execWriterT (mapM_ (putContent enableLine) content)
-		lift $ writeFile' path text
+		lift $ writeFile' (FP.fromString (TL.unpack path)) text
 
 putContent :: Monad m => Bool -> Content -> TangleT m ()
 putContent enableLine (ContentText pos t) = do

@@ -18,7 +18,9 @@ module Anansi.Types
 	, Content (..)
 	, Position (..)
 	) where
+import Prelude hiding (FilePath)
 import Data.Text.Lazy (Text)
+import System.FilePath.CurrentOS (FilePath)
 
 data Block
 	= BlockText Text
@@ -32,7 +34,7 @@ data Content
 	deriving (Show)
 
 data Position = Position
-	{ positionFile :: Text
+	{ positionFile :: FilePath
 	, positionLine :: Integer
 	}
 	deriving (Show, Eq)

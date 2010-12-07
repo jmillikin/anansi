@@ -15,9 +15,9 @@
 -- 
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
-
 import Anansi
 
+import Prelude hiding (FilePath)
 import Control.Monad.Writer
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
@@ -28,14 +28,15 @@ import System.Console.GetOpt
 import System.Directory
 import System.Environment
 import System.Exit
-import System.FilePath
-import System.IO hiding (withFile)
+import System.FilePath (FilePath)
+import qualified System.FilePath.CurrentOS as FP
+import System.IO hiding (withFile, FilePath)
 
 data Output = Tangle | Weave
 
 data Option
 	= OptionOutput Output
-	| OptionOutputPath TL.Text
+	| OptionOutputPath FilePath
 	| OptionLoom TL.Text
 	| OptionNoLines
 
@@ -45,7 +46,7 @@ optionInfo =
 	  "Generate tangled source code (default)"
 	, Option ['w'] ["weave"] (NoArg (OptionOutput Weave))
 	  "Generate woven markup"
-	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . TL.pack) "PATH")
+	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . FP.fromString) "PATH")
 	  "Output path (directory for tangle, file for weave)"
 	, Option ['l'] ["loom"] (ReqArg (OptionLoom . TL.pack) "NAME")
 	  "Which loom should be used to weave output"
@@ -62,16 +63,16 @@ getOutput (x:xs) = case x of
 	OptionOutput o -> o
 	_ -> getOutput xs
 
-getPath :: [Option] -> TL.Text
+getPath :: [Option] -> FilePath
 getPath [] = ""
 getPath (x:xs) = case x of
 	OptionOutputPath p -> p
 	_ -> getPath xs
 
-withFile :: TL.Text -> (Handle -> IO a) -> IO a
-withFile path io = case path of
-	"" -> io stdout
-	_ -> withBinaryFile (TL.unpack path) WriteMode io
+withFile :: FilePath -> (Handle -> IO a) -> IO a
+withFile path io = if FP.null path
+	then io stdout
+	else withBinaryFile (FP.toString path) WriteMode io
 
 loomMap :: [(TL.Text, Loom)]
 loomMap = [(loomName l, l) | l <- looms]
@@ -117,19 +118,20 @@ main = do
 				texts = execWriter $ loomWeave loom blocks
 				in withFile path $ \h -> BL.hPut h $ encodeUtf8 texts
 
-debugTangle :: TL.Text -> TL.Text -> IO ()
+debugTangle :: FilePath -> TL.Text -> IO ()
 debugTangle path text = do
+	let strPath = FP.toString path
 	putStr "\n"
-	TLIO.putStrLn path
-	putStrLn $ replicate (fromIntegral (TL.length path)) '='
+	putStrLn strPath
+	putStrLn $ replicate (fromIntegral (length strPath)) '='
 	TLIO.putStr text
 
-realTangle :: TL.Text -> TL.Text -> TL.Text -> IO ()
+realTangle :: FilePath -> FilePath -> TL.Text -> IO ()
 realTangle root path text = do
-	let fullpath = combine (TL.unpack root) (TL.unpack path)
-	createDirectoryIfMissing True $ takeDirectory fullpath
+	let fullpath = FP.append root path
+	createDirectoryIfMissing True (FP.toString (FP.parent fullpath))
 	let bytes = encodeUtf8 text
-	withBinaryFile fullpath ReadWriteMode $ \h -> do
+	withBinaryFile (FP.toString fullpath) ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
 			hSetFileSize h 0
@@ -151,7 +153,7 @@ fileContentsEqual h bytes = do
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
 parseInputs inputs = do
-	eithers <- mapM (parseFile . TL.pack) inputs
+	eithers <- mapM (parseFile . FP.fromString) inputs
 	return $ case catEithers eithers of
 		Left err -> Left err
 		Right bs -> Right $ concat bs
@@ -159,7 +161,7 @@ parseInputs inputs = do
 formatError :: ParseError -> String
 formatError err = concat [filename, ":", line, ": error: ", message] where
 	pos = parseErrorPosition err
-	filename = TL.unpack $ positionFile pos
+	filename = FP.toString (positionFile pos)
 	line = show $ positionLine pos
 	message = TL.unpack $ parseErrorMessage err
 
