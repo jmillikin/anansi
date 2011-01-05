@@ -26,6 +26,7 @@ import qualified Data.Map as Map
 import System.FilePath (FilePath)
 import qualified System.FilePath.CurrentOS as FP
 import Anansi.Types
+import Anansi.Util
 
 type ContentMap = Map.Map TL.Text [Content]
 
@@ -84,7 +85,7 @@ putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
 		TangleState lastPos old macros <- S.get
 		S.put $ TangleState lastPos (TL.append old indent) macros
-		m
+		void m
 		TangleState newPos _ _ <- S.get
 		S.put $ TangleState newPos old macros
 	putMacro = do

@@ -17,6 +17,7 @@ module Anansi.Util
 	( concatMapM
 	, replace
 	, catEithers
+	, void
 	) where
 import Control.Monad (liftM)
 
@@ -34,3 +35,6 @@ catEithers = cat' [] where
 	cat' acc (e:es) = case e of
 		Left err -> Left err
 		Right x -> cat' (x : acc) es
+
+void :: Monad m => m a -> m ()
+void m = m >> return ()

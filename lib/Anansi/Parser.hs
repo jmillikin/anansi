@@ -81,7 +81,7 @@ parseLines = do
 parseLine :: P.Parsec String u Line
 parseLine = command <|> text where
 	command = do
-		P.char ':'
+		void (P.char ':')
 		pos <- getPosition
 		LineCommand pos <$> parseCommand
 	
@@ -95,38 +95,38 @@ parseCommand = parsed where
 	string = P.try . P.string
 	parsed = P.choice [file, include, define, option, colon, comment, endBlock]
 	file = do
-		string "file " <|> string "f "
+		void (string "file " <|> string "f ")
 		CommandFile <$> untilChar '\n'
 	
 	include = do
-		string "include " <|> string "i "
+		void (string "include " <|> string "i ")
 		CommandInclude <$> untilChar '\n'
 	
 	define = do
-		string "define " <|> string "d "
+		void (string "define " <|> string "d ")
 		-- TODO: verify no '|' in name
 		CommandDefine <$> untilChar '\n'
 	
 	option = do
-		string "option " <|> string "o "
+		void (string "option " <|> string "o ")
 		key <- P.manyTill P.anyChar (P.try (P.satisfy isSpace))
 		P.skipMany (P.satisfy isSpace)
 		value <- untilChar '\n'
 		return (CommandOption (TL.pack key) value)
 	
 	colon = do
-		P.char ':'
+		void (P.char ':')
 		return $ CommandColon
 	
 	comment = do
-		P.char '#'
-		untilChar '\n'
-		return $ CommandComment
+		void (P.char '#')
+		void (untilChar '\n')
+		return CommandComment
 	
 	endBlock = do
 		line <- untilChar '\n'
 		if TL.all isSpace line
-			then return $ CommandEndBlock
+			then return CommandEndBlock
 			else do
 				pos <- getPosition
 				let msg = TL.pack $ "unknown command: " ++ show (TL.append ":" line)
@@ -181,7 +181,7 @@ parseContent start block = parse [] where
 	contentMacro pos = do
 		(indent, c) <- P.try $ do
 			indent <- P.many $ P.satisfy isSpace
-			P.char '|'
+			void (P.char '|')
 			c <- P.satisfy (not . isSpace)
 			return (indent, c)
 		name <- untilChar '|'

@@ -23,9 +23,6 @@ library
   if true
     ghc-options: -Wall
 
-  if impl(ghc >= 6.11)
-    ghc-options: -fno-warn-unused-do-bind
-
   build-depends:
       base >=4.0 && < 5.0
     , parsec >= 3.0 && < 3.2
@@ -55,9 +52,6 @@ executable anansi
 
   if true
     ghc-options: -Wall
-
-  if impl(ghc >= 6.11)
-    ghc-options: -fno-warn-unused-do-bind
 
   build-depends:
       base >=4.0 && < 5.0
