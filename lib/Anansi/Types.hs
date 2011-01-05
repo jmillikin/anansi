@@ -26,6 +26,7 @@ data Block
 	= BlockText Text
 	| BlockFile Text [Content]
 	| BlockDefine Text [Content]
+	| BlockOption Text Text
 	deriving (Show)
 
 data Content

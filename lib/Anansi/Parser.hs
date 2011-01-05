@@ -53,6 +53,7 @@ data Command
 	= CommandInclude TL.Text
 	| CommandFile TL.Text
 	| CommandDefine TL.Text
+	| CommandOption TL.Text TL.Text
 	| CommandColon
 	| CommandEndBlock
 	| CommandComment
@@ -92,7 +93,7 @@ parseLine = command <|> text where
 parseCommand :: P.Parsec String u Command
 parseCommand = parsed where
 	string = P.try . P.string
-	parsed = P.choice [file, include, define, colon, comment, endBlock]
+	parsed = P.choice [file, include, define, option, colon, comment, endBlock]
 	file = do
 		string "file " <|> string "f "
 		CommandFile <$> untilChar '\n'
@@ -105,6 +106,13 @@ parseCommand = parsed where
 		string "define " <|> string "d "
 		-- TODO: verify no '|' in name
 		CommandDefine <$> untilChar '\n'
+	
+	option = do
+		string "option " <|> string "o "
+		key <- P.manyTill P.anyChar (P.try (P.satisfy isSpace))
+		P.skipMany (P.satisfy isSpace)
+		value <- untilChar '\n'
+		return (CommandOption (TL.pack key) value)
 	
 	colon = do
 		P.char ':'
@@ -138,6 +146,7 @@ parseBlocks (line:xs) = parsed where
 		LineCommand pos cmd -> case cmd of
 			CommandFile path -> parseContent pos (BlockFile path) xs
 			CommandDefine name -> parseContent pos (BlockDefine name) xs
+			CommandOption key value -> Just (Right (BlockOption key value), xs)
 			CommandColon -> Just (Right $ BlockText ":", xs)
 			CommandEndBlock -> Just (Right $ BlockText "\n", xs)
 			CommandComment -> Just (Right $ BlockText "", xs)

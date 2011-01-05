@@ -31,6 +31,7 @@ loomHTML = Loom "html" $ mapM_ putBlock where
 		BlockDefine name content -> let
 			label = TL.concat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
 			in putContent label content
+		BlockOption _ _ -> return ()
 	
 	putContent label cs = do
 		tell "<pre>"
