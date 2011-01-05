@@ -16,6 +16,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main (main) where
 import Anansi
+import Paths_anansi (version)
 
 import Prelude hiding (FilePath)
 import Control.Monad.Writer
@@ -23,6 +24,7 @@ import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import Data.Text.Lazy.Encoding (encodeUtf8)
 import qualified Data.ByteString.Lazy as BL
+import Data.Version (showVersion)
 
 import System.Console.GetOpt
 import System.Directory
@@ -33,12 +35,15 @@ import qualified System.FilePath.CurrentOS as FP
 import System.IO hiding (withFile, FilePath)
 
 data Output = Tangle | Weave
+	deriving (Eq)
 
 data Option
 	= OptionOutput Output
 	| OptionOutputPath FilePath
 	| OptionLoom TL.Text
 	| OptionNoLines
+	| OptionVersion
+	deriving (Eq)
 
 optionInfo :: [OptDescr Option]
 optionInfo =
@@ -52,6 +57,7 @@ optionInfo =
 	  "Which loom should be used to weave output"
 	, Option [] ["noline"] (NoArg OptionNoLines)
 	  "Disable generating #line declarations in tangled code"
+	, Option [] ["version"] (NoArg OptionVersion) ""
 	]
 
 usage :: String -> String
@@ -100,6 +106,10 @@ main = do
 		hPutStrLn stderr $ concat errors
 		hPutStrLn stderr $ usageInfo (usage name) optionInfo
 		exitFailure
+	
+	when (OptionVersion `elem` options) $ do
+		putStrLn ("anansi_" ++ showVersion version)
+		exitSuccess
 	
 	let path = getPath options
 	let loom = getLoom options
