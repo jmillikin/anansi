@@ -93,7 +93,8 @@ putPosition :: Monad m => Position -> TangleT m ()
 putPosition pos = do
 	TangleState lastPos indent macros <- S.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
-	let line = "\n#line " ++ show (positionLine pos) ++ " " ++ show (positionFile pos) ++ "\n"
+	let filename = FP.toString (positionFile pos)
+	let line = "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
 	S.put $ TangleState pos indent macros
 	if pos == expectedPos
 		then return ()
