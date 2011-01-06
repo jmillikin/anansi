@@ -17,7 +17,6 @@
 module Anansi.Tangle (tangle) where
 
 import Prelude hiding (FilePath)
-import Control.Monad (when)
 import Control.Monad.Trans (lift)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
@@ -76,7 +75,7 @@ tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initSta
 putContent :: Monad m => Bool -> Content -> TangleT m ()
 putContent enableLine (ContentText pos t) = do
 	TangleState _ indent _ <- S.get
-	when enableLine $ putPosition pos
+	putPosition enableLine pos
 	W.tell indent
 	W.tell t
 	W.tell "\n"
@@ -89,15 +88,17 @@ putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
 		TangleState newPos _ _ <- S.get
 		S.put $ TangleState newPos old macros
 	putMacro = do
-		when enableLine $ putPosition pos
+		putPosition enableLine pos
 		lookupMacro name >>= mapM_ (putContent enableLine)
 
-putPosition :: Monad m => Position -> TangleT m ()
-putPosition pos = do
+putPosition :: Monad m => Bool -> Position -> TangleT m ()
+putPosition enableLine pos = do
 	TangleState lastPos indent macros <- S.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
 	let filename = FP.toString (positionFile pos)
-	let line = "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
+	let line = if enableLine
+		then "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
+		else "\n"
 	S.put $ TangleState pos indent macros
 	if pos == expectedPos
 		then return ()
