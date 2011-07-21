@@ -1,4 +1,6 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+{-# LANGUAGE OverloadedStrings #-}
+
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,21 +14,22 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
-{-# LANGUAGE OverloadedStrings #-}
+
 module Anansi.Tangle (tangle) where
 
-import Prelude hiding (FilePath)
-import Control.Monad.Trans (lift)
+import           Prelude hiding (FilePath)
+
 import qualified Control.Monad.State as S
+import           Control.Monad.Trans (lift)
 import qualified Control.Monad.Writer as W
-import Data.String (fromString)
-import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
-import System.FilePath (FilePath)
+import           Data.String (fromString)
+import qualified Data.Text.Lazy as TL
+import           System.FilePath (FilePath)
 import qualified System.FilePath.CurrentOS as FP
-import Anansi.Types
-import Anansi.Util
+
+import           Anansi.Types
+import           Anansi.Util
 
 type ContentMap = Map.Map TL.Text [Content]
 

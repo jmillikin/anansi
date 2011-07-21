@@ -1,4 +1,6 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+{-# LANGUAGE OverloadedStrings #-}
+
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,13 +14,14 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
-{-# LANGUAGE OverloadedStrings #-}
+
 module Anansi.Loom.Debug (loomDebug) where
-import Data.Text.Lazy (pack)
-import Control.Monad (forM_)
-import Control.Monad.Writer (tell)
-import Anansi.Loom
+
+import           Control.Monad (forM_)
+import           Control.Monad.Writer (tell)
+import           Data.Text.Lazy (pack)
+
+import           Anansi.Loom
 
 loomDebug :: Loom
 loomDebug = Loom "debug" $ \blocks -> do

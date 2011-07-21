@@ -1,4 +1,4 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,13 +12,15 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
+
 module Anansi.Loom
 	( Loom (..)
 	) where
-import Control.Monad.Writer
-import Data.Text.Lazy (Text)
-import Anansi.Types
+
+import           Control.Monad.Writer
+import           Data.Text.Lazy (Text)
+
+import           Anansi.Types
 
 data Loom = Loom
 	{ loomName :: Text

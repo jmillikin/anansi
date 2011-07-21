@@ -1,4 +1,6 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+{-# LANGUAGE OverloadedStrings #-}
+
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,30 +14,30 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
-{-# LANGUAGE OverloadedStrings #-}
-module Main (main) where
-import Anansi
-import Paths_anansi (version)
 
-import Prelude hiding (FilePath)
-import Control.Monad.Writer
-import Data.String (fromString)
+module Main (main) where
+
+import           Prelude hiding (FilePath)
+
+import           Control.Monad.Writer
+import qualified Data.ByteString.Lazy as BL
+import           Data.String (fromString)
 import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
-import Data.Text.Lazy.Encoding (encodeUtf8)
-import qualified Data.ByteString.Lazy as BL
-import Data.Version (showVersion)
-
-import System.Console.GetOpt
-import System.Directory
-import System.Environment
-import System.Exit
-import System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
-import System.IO hiding (withFile, FilePath)
+import           Data.Text.Lazy.Encoding (encodeUtf8)
+import           Data.Version (showVersion)
+import           System.Console.GetOpt
+import           System.Directory
+import           System.Environment
+import           System.Exit
 import qualified System.File
+import           System.FilePath (FilePath)
+import qualified System.FilePath.CurrentOS as FP
+import           System.IO hiding (withFile, FilePath)
+
+import           Anansi
+import           Paths_anansi (version)
 
 data Output = Tangle | Weave
 	deriving (Eq)

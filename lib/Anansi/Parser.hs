@@ -1,4 +1,7 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE DeriveDataTypeable #-}
+
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,31 +15,32 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveDataTypeable #-}
+
 module Anansi.Parser
 	( ParseError (..)
 	, parseFile
 	) where
-import Prelude hiding (FilePath)
-import Control.Applicative ((<|>), (<$>))
-import Control.Monad.Trans (lift)
-import qualified Control.Monad.State as S
+
+import           Prelude hiding (FilePath)
+
+import           Control.Applicative ((<|>), (<$>))
 import qualified Control.Exception as E
-import Data.List (unfoldr)
-import Data.Typeable (Typeable)
-import qualified Text.Parsec as P
-import Data.String (fromString)
+import qualified Control.Monad.State as S
+import           Control.Monad.Trans (lift)
+import           Data.List (unfoldr)
+import qualified Data.Map as Map
+import           Data.String (fromString)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
-import qualified Data.Map as Map
-import System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
+import           Data.Typeable (Typeable)
 import qualified System.File
-import Anansi.Types
-import Anansi.Util
+import           System.FilePath (FilePath)
+import qualified System.FilePath.CurrentOS as FP
+import qualified Text.Parsec as P
+
+import           Anansi.Types
+import           Anansi.Util
 
 data ParseError = ParseError
 	{ parseErrorPosition :: Position

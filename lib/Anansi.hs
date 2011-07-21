@@ -1,4 +1,4 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,7 +12,7 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
+
 module Anansi
 	( Block (..)
 	, Content (..)
@@ -30,14 +30,15 @@ module Anansi
 	
 	, tangle
 	) where
-import Anansi.Types
-import Anansi.Loom
-import Anansi.Loom.Debug
-import Anansi.Loom.HTML
-import Anansi.Loom.LaTeX
-import Anansi.Loom.NoWeb
-import Anansi.Parser
-import Anansi.Tangle
+
+import           Anansi.Loom
+import           Anansi.Loom.Debug
+import           Anansi.Loom.HTML
+import           Anansi.Loom.LaTeX
+import           Anansi.Loom.NoWeb
+import           Anansi.Parser
+import           Anansi.Tangle
+import           Anansi.Types
 
 looms :: [Loom]
 looms = [loomDebug, loomHTML, loomLaTeX, loomNoWeb]

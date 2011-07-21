@@ -1,4 +1,4 @@
--- Copyright (C) 2010 John Millikin <jmillikin@gmail.com>
+-- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -12,15 +12,17 @@
 -- 
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
--- 
+
 module Anansi.Types
 	( Block (..)
 	, Content (..)
 	, Position (..)
 	) where
-import Prelude hiding (FilePath)
-import Data.Text.Lazy (Text)
-import System.FilePath.CurrentOS (FilePath)
+
+import           Prelude hiding (FilePath)
+
+import           Data.Text.Lazy (Text)
+import           System.FilePath.CurrentOS (FilePath)
 
 data Block
 	= BlockText Text
