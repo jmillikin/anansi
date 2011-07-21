@@ -20,6 +20,7 @@ import Prelude hiding (FilePath)
 import Control.Monad.Trans (lift)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.Writer as W
+import Data.String (fromString)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
 import System.FilePath (FilePath)
@@ -70,7 +71,7 @@ tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initSta
 	
 	putFile (path, content) = do
 		text <- W.execWriterT (mapM_ (putContent enableLine) content)
-		lift $ writeFile' (FP.fromString (TL.unpack path)) text
+		lift $ writeFile' (fromString (TL.unpack path)) text
 
 putContent :: Monad m => Bool -> Content -> TangleT m ()
 putContent enableLine (ContentText pos t) = do
@@ -95,7 +96,7 @@ putPosition :: Monad m => Bool -> Position -> TangleT m ()
 putPosition enableLine pos = do
 	TangleState lastPos indent macros <- S.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
-	let filename = FP.toString (positionFile pos)
+	let filename = FP.toText (positionFile pos)
 	let line = if enableLine
 		then "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
 		else "\n"

@@ -27,13 +27,14 @@ import qualified Control.Exception as E
 import Data.List (unfoldr)
 import Data.Typeable (Typeable)
 import qualified Text.Parsec as P
-import qualified Data.ByteString as B
+import Data.String (fromString)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
 import System.FilePath (FilePath)
 import qualified System.FilePath.CurrentOS as FP
+import qualified System.File
 import Anansi.Types
 import Anansi.Util
 
@@ -70,7 +71,7 @@ untilChar c = TL.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 getPosition :: Monad m => P.ParsecT s u m Position
 getPosition = do
 	pos <- P.getPosition
-	return $ Position (FP.fromString (P.sourceName pos)) (toInteger (P.sourceLine pos))
+	return $ Position (fromString (P.sourceName pos)) (toInteger (P.sourceLine pos))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -198,7 +199,7 @@ genLines getLines = genLines' where
 	genLines' path = lift (getLines path) >>= concatMapM (resolveIncludes path)
 	
 	textToPath :: TL.Text -> FilePath
-	textToPath = FP.fromString . TL.unpack
+	textToPath = fromString . TL.unpack
 	
 	relative :: FilePath -> TL.Text -> FilePath
 	relative x y = FP.append (FP.parent x) (textToPath y)
@@ -219,10 +220,9 @@ parseFile root = io where
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
-		let strPath = FP.toString path
-		bytes <- B.readFile strPath
+		bytes <- System.File.readFile path
 		let contents = T.unpack (TE.decodeUtf8 bytes)
-		case P.parse parseLines strPath contents of
+		case P.parse parseLines (show path) contents of
 			Right x -> return x
 			Left err -> let
 				msg = TL.pack $ "getLines parse failed (internal error): " ++ show err

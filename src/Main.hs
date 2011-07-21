@@ -20,6 +20,8 @@ import Paths_anansi (version)
 
 import Prelude hiding (FilePath)
 import Control.Monad.Writer
+import Data.String (fromString)
+import qualified Data.Text as T
 import qualified Data.Text.Lazy as TL
 import qualified Data.Text.Lazy.IO as TLIO
 import Data.Text.Lazy.Encoding (encodeUtf8)
@@ -33,6 +35,7 @@ import System.Exit
 import System.FilePath (FilePath)
 import qualified System.FilePath.CurrentOS as FP
 import System.IO hiding (withFile, FilePath)
+import qualified System.File
 
 data Output = Tangle | Weave
 	deriving (Eq)
@@ -51,7 +54,7 @@ optionInfo =
 	  "Generate tangled source code (default)"
 	, Option ['w'] ["weave"] (NoArg (OptionOutput Weave))
 	  "Generate woven markup"
-	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . FP.fromString) "PATH")
+	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . fromString) "PATH")
 	  "Output path (directory for tangle, file for weave)"
 	, Option ['l'] ["loom"] (ReqArg (OptionLoom . TL.pack) "NAME")
 	  "Which loom should be used to weave output"
@@ -78,7 +81,7 @@ getPath (x:xs) = case x of
 withFile :: FilePath -> (Handle -> IO a) -> IO a
 withFile path io = if FP.null path
 	then io stdout
-	else withBinaryFile (FP.toString path) WriteMode io
+	else System.File.withFile path WriteMode io
 
 loomMap :: [(TL.Text, Loom)]
 loomMap = [(loomName l, l) | l <- looms]
@@ -130,7 +133,7 @@ main = do
 
 debugTangle :: FilePath -> TL.Text -> IO ()
 debugTangle path text = do
-	let strPath = FP.toString path
+	let strPath = either T.unpack T.unpack (FP.toText path)
 	putStr "\n"
 	putStrLn strPath
 	putStrLn $ replicate (fromIntegral (length strPath)) '='
@@ -139,9 +142,9 @@ debugTangle path text = do
 realTangle :: FilePath -> FilePath -> TL.Text -> IO ()
 realTangle root path text = do
 	let fullpath = FP.append root path
-	createDirectoryIfMissing True (FP.toString (FP.parent fullpath))
+	createTree (FP.parent fullpath)
 	let bytes = encodeUtf8 text
-	withBinaryFile (FP.toString fullpath) ReadWriteMode $ \h -> do
+	System.File.withFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
 			hSetFileSize h 0
@@ -163,7 +166,7 @@ fileContentsEqual h bytes = do
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
 parseInputs inputs = do
-	eithers <- mapM (parseFile . FP.fromString) inputs
+	eithers <- mapM (parseFile . fromString) inputs
 	return $ case catEithers eithers of
 		Left err -> Left err
 		Right bs -> Right $ concat bs
@@ -171,7 +174,7 @@ parseInputs inputs = do
 formatError :: ParseError -> String
 formatError err = concat [filename, ":", line, ": error: ", message] where
 	pos = parseErrorPosition err
-	filename = FP.toString (positionFile pos)
+	filename = either T.unpack T.unpack (FP.toText (positionFile pos))
 	line = show $ positionLine pos
 	message = TL.unpack $ parseErrorMessage err
 
