@@ -1,30 +1,28 @@
 name: anansi
-version: 0.3.1
+version: 0.4
 synopsis: Simple literate programming preprocessor
 license: GPL-3
 license-file: license.txt
 author: John Millikin
 maintainer: jmillikin@gmail.com
 build-type: Simple
-cabal-version: >=1.8
+cabal-version: >= 1.8
 category: Development
 stability: experimental
 bug-reports: mailto:jmillikin@gmail.com
-homepage: http://john-millikin.com/software/anansi/
-tested-with: GHC==6.12.1
+homepage: https://john-millikin.com/software/anansi/
+tested-with: GHC == 6.12.1
 
 source-repository head
   type: bazaar
-  location: http://john-millikin.com/software/anansi/
+  location: https://john-millikin.com/software/anansi/
 
 library
   hs-source-dirs: lib
-
-  if true
-    ghc-options: -Wall
+  ghc-options: -Wall
 
   build-depends:
-      base >=4.0 && < 5.0
+      base >= 4.0 && < 5.0
     , parsec >= 3.0 && < 3.2
     , bytestring >= 0.9 && < 0.10
     , text >= 0.7 && < 0.12
@@ -50,12 +48,10 @@ library
 executable anansi
   hs-source-dirs: src
   main-is: Main.hs
-
-  if true
-    ghc-options: -Wall
+  ghc-options: -Wall
 
   build-depends:
-      base >=4.0 && < 5.0
+      base >= 4.0 && < 5.0
     , bytestring >= 0.9 && < 0.10
     , text >= 0.7 && < 0.12
     , monads-tf >= 0.1 && < 0.2
