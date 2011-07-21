@@ -20,14 +20,16 @@ module Anansi.Loom.NoWeb (loomNoWeb) where
 import           Control.Monad (forM_)
 import qualified Control.Monad.State as S
 import           Control.Monad.Writer (Writer, tell)
-import qualified Data.Text.Lazy as TL
+import           Data.Monoid (mconcat)
+import           Data.Text (Text)
+import qualified Data.Text
 
 import           Anansi.Loom
 import           Anansi.Types
 
 data LoomState = LoomState { stateTabSize :: Integer }
 
-type LoomM = S.StateT LoomState (Writer TL.Text)
+type LoomM = S.StateT LoomState (Writer Text)
 
 loomNoWeb :: Loom
 loomNoWeb = Loom "latex-noweb" (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
@@ -49,36 +51,38 @@ loomNoWeb = Loom "latex-noweb" (\bs -> S.evalStateT (mapM_ putBlock bs) initStat
 			putContent content
 			tell "\\nwendcode{}\n"
 		BlockOption key value -> if key == "tab-size"
-			then S.put (LoomState (read (TL.unpack value)))
+			then S.put (LoomState (read (Data.Text.unpack value)))
 			else return ()
 	
 	putContent cs = forM_ cs $ \c -> case c of
-		ContentText _ text -> tell =<< escapeCode (TL.append text "\n")
-		ContentMacro _ indent name -> tell =<< formatMacro indent name
+		ContentText _ text -> do
+			escapeCode text >>= tell
+			tell "\n"
+		ContentMacro _ indent name -> formatMacro indent name >>= tell
 	
 	formatMacro indent name = do
 		escIndent <- escapeCode indent
 		escName <- escapeText name
-		return $ TL.concat [escIndent, "\\LA{}", escName, "\\RA{}\n"]
+		return (mconcat [escIndent, "\\LA{}", escName, "\\RA{}\n"])
 
-escapeCode :: TL.Text -> LoomM TL.Text
+escapeCode :: Text -> LoomM Text
 escapeCode text = do
 	tabSize <- S.gets stateTabSize
 	
-	return $ TL.concatMap (\c -> case c of
-		'\t' -> TL.replicate (fromInteger tabSize) (TL.singleton ' ')
+	return $ Data.Text.concatMap (\c -> case c of
+		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\\\"
 		'{' -> "\\{"
 		'}' -> "\\}"
 		'_' -> "\\_"
-		_ -> TL.singleton c) text
+		_ -> Data.Text.singleton c) text
 
-escapeText :: TL.Text -> LoomM TL.Text
+escapeText :: Text -> LoomM Text
 escapeText text = do
 	tabSize <- S.gets stateTabSize
 	
-	return $ TL.concatMap (\c -> case c of
-		'\t' -> TL.replicate (fromInteger tabSize) (TL.singleton ' ')
+	return $ Data.Text.concatMap (\c -> case c of
+		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\\\"
 		'{' -> "\\{"
 		'}' -> "\\}"
@@ -86,4 +90,4 @@ escapeText text = do
 		'<' -> "{$<$}"
 		'>' -> "{$>$}"
 		'$' -> "\\$"
-		_ -> TL.singleton c) text
+		_ -> Data.Text.singleton c) text

@@ -23,7 +23,7 @@ module Anansi.Util
 import           Control.Monad (liftM)
 
 concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
-concatMapM f xs = liftM concat $ mapM f xs
+concatMapM f xs = liftM concat (mapM f xs)
 
 replace :: Eq a => a -> [a] -> [a] -> [a]
 replace from to xs = flip concatMap xs $ \x -> if x == from
@@ -32,7 +32,7 @@ replace from to xs = flip concatMap xs $ \x -> if x == from
 
 catEithers :: [Either e a] -> Either e [a]
 catEithers = cat' [] where
-	cat' acc [] = Right $ reverse acc
+	cat' acc [] = Right (reverse acc)
 	cat' acc (e:es) = case e of
 		Left err -> Left err
 		Right x -> cat' (x : acc) es

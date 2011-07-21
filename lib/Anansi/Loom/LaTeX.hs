@@ -20,14 +20,16 @@ module Anansi.Loom.LaTeX (loomLaTeX) where
 import           Control.Monad (forM_)
 import qualified Control.Monad.State as S
 import           Control.Monad.Writer (Writer, tell)
-import qualified Data.Text.Lazy as TL
+import           Data.Monoid (mconcat)
+import           Data.Text (Text)
+import qualified Data.Text
 
 import           Anansi.Loom
 import           Anansi.Types
 
 data LoomState = LoomState { stateTabSize :: Integer }
 
-type LoomM = S.StateT LoomState (Writer TL.Text)
+type LoomM = S.StateT LoomState (Writer Text)
 
 loomLaTeX :: Loom
 loomLaTeX = Loom "latex" (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
@@ -51,26 +53,28 @@ loomLaTeX = Loom "latex" (\bs -> S.evalStateT (mapM_ putBlock bs) initState) whe
 			putContent content
 			tell "\\end{alltt}\n"
 		BlockOption key value -> if key == "tab-size"
-			then S.put (LoomState (read (TL.unpack value)))
+			then S.put (LoomState (read (Data.Text.unpack value)))
 			else return ()
 	
 	putContent cs = forM_ cs $ \c -> case c of
-		ContentText _ text -> tell =<< escape (TL.append text "\n")
-		ContentMacro _ indent name -> tell =<< formatMacro indent name
+		ContentText _ text -> do
+			escape text >>= tell
+			tell "\n"
+		ContentMacro _ indent name -> formatMacro indent name >>= tell
 	
 	formatMacro indent name = do
 		escIndent <- escape indent
 		escName <- escape name
-		return $ TL.concat [escIndent, "|\\emph{", escName, "}|\n"]
+		return (mconcat [escIndent, "|\\emph{", escName, "}|\n"])
 
-escape ::  TL.Text -> LoomM TL.Text
+escape ::  Text -> LoomM Text
 escape text = do
 	tabSize <- S.gets stateTabSize
 	
-	return $ TL.concatMap (\c -> case c of
-		'\t' -> TL.replicate (fromInteger tabSize) (TL.singleton ' ')
+	return $ Data.Text.concatMap (\c -> case c of
+		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\textbackslash{}"
 		'{' -> "\\{"
 		'}' -> "\\}"
 		'_' -> "\\_"
-		_ -> TL.singleton c) text
+		_ -> Data.Text.singleton c) text

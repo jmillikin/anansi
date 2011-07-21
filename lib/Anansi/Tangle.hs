@@ -22,22 +22,23 @@ import           Prelude hiding (FilePath)
 import qualified Control.Monad.State as S
 import           Control.Monad.Trans (lift)
 import qualified Control.Monad.Writer as W
-import qualified Data.Map as Map
-import           Data.String (fromString)
-import qualified Data.Text.Lazy as TL
+import           Data.Map (Map)
+import qualified Data.Map
+import           Data.Text (Text)
+import qualified Data.Text
 import           System.FilePath (FilePath)
 import qualified System.FilePath.CurrentOS as FP
 
 import           Anansi.Types
 import           Anansi.Util
 
-type ContentMap = Map.Map TL.Text [Content]
+type ContentMap = Map Text [Content]
 
-data TangleState = TangleState Position TL.Text ContentMap
-type TangleT m a = W.WriterT TL.Text (S.StateT TangleState m) a
+data TangleState = TangleState Position Text ContentMap
+type TangleT m a = W.WriterT Text (S.StateT TangleState m) a
 
 buildMacros :: [Block] -> ContentMap
-buildMacros blocks = S.execState (mapM_ accumMacro blocks) Map.empty
+buildMacros blocks = S.execState (mapM_ accumMacro blocks) Data.Map.empty
 
 accumMacro :: Block -> S.State ContentMap ()
 accumMacro b = case b of
@@ -45,11 +46,11 @@ accumMacro b = case b of
 	BlockFile _ _ -> return ()
 	BlockDefine name content -> do
 		macros <- S.get
-		S.put $ Map.insertWith (\new old -> old ++ new) name content macros
+		S.put (Data.Map.insertWith (\new old -> old ++ new) name content macros)
 	BlockOption _ _ -> return ()
 
 buildFiles :: [Block] -> ContentMap
-buildFiles blocks = S.execState (mapM_ accumFile blocks) Map.empty
+buildFiles blocks = S.execState (mapM_ accumFile blocks) Data.Map.empty
 
 accumFile :: Block -> S.State ContentMap ()
 accumFile b = case b of
@@ -58,11 +59,11 @@ accumFile b = case b of
 	BlockFile name content -> do
 		let accum new old = old ++ new
 		files <- S.get
-		S.put $ Map.insertWith accum name content files
+		S.put (Data.Map.insertWith accum name content files)
 	BlockOption _ _ -> return ()
 
 tangle :: Monad m
-       => (FilePath -> TL.Text -> m ())
+       => (FilePath -> Text -> m ())
        -> Bool -- ^ Enable writing #line declarations
        -> [Block]
        -> m ()
@@ -70,11 +71,11 @@ tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initSta
 	initState = (TangleState (Position "" 0) "" macros)
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks
-	files = Map.toAscList fileMap
+	files = Data.Map.toAscList fileMap
 	
 	putFile (path, content) = do
 		text <- W.execWriterT (mapM_ (putContent enableLine) content)
-		lift $ writeFile' (fromString (TL.unpack path)) text
+		lift (writeFile' (FP.fromText path) text)
 
 putContent :: Monad m => Bool -> Content -> TangleT m ()
 putContent enableLine (ContentText pos t) = do
@@ -87,10 +88,10 @@ putContent enableLine (ContentText pos t) = do
 putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
 		TangleState lastPos old macros <- S.get
-		S.put $ TangleState lastPos (TL.append old indent) macros
+		S.put (TangleState lastPos (Data.Text.append old indent) macros)
 		void m
 		TangleState newPos _ _ <- S.get
-		S.put $ TangleState newPos old macros
+		S.put (TangleState newPos old macros)
 	putMacro = do
 		putPosition enableLine pos
 		lookupMacro name >>= mapM_ (putContent enableLine)
@@ -103,14 +104,14 @@ putPosition enableLine pos = do
 	let line = if enableLine
 		then "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
 		else "\n"
-	S.put $ TangleState pos indent macros
+	S.put (TangleState pos indent macros)
 	if pos == expectedPos
 		then return ()
-		else W.tell $ TL.pack line
+		else W.tell (Data.Text.pack line)
 
-lookupMacro :: Monad m => TL.Text -> TangleT m [Content]
+lookupMacro :: Monad m => Text -> TangleT m [Content]
 lookupMacro name = do
 	TangleState _ _ macros <- S.get
-	case Map.lookup name macros of
-		Nothing -> error $ "unknown macro: " ++ show name
+	case Data.Map.lookup name macros of
+		Nothing -> error ("unknown macro: " ++ show name)
 		Just content -> return content

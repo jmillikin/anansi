@@ -18,7 +18,7 @@ module Anansi.Loom
 	) where
 
 import           Control.Monad.Writer
-import           Data.Text.Lazy (Text)
+import           Data.Text (Text)
 
 import           Anansi.Types
 

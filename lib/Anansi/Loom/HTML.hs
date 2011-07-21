@@ -19,7 +19,9 @@ module Anansi.Loom.HTML (loomHTML) where
 
 import           Control.Monad (forM_)
 import           Control.Monad.Writer (tell)
-import qualified Data.Text.Lazy as TL
+import           Data.Monoid (mconcat)
+import           Data.Text (Text)
+import qualified Data.Text
 
 import           Anansi.Loom
 import           Anansi.Types
@@ -29,10 +31,10 @@ loomHTML = Loom "html" $ mapM_ putBlock where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> let
-			label = TL.concat ["<b>&#xBB; ", escape path, "</b>"]
+			label = mconcat ["<b>&#xBB; ", escape path, "</b>"]
 			in putContent label content
 		BlockDefine name content -> let
-			label = TL.concat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
+			label = mconcat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
 			in putContent label content
 		BlockOption _ _ -> return ()
 	
@@ -41,18 +43,20 @@ loomHTML = Loom "html" $ mapM_ putBlock where
 		tell label
 		tell "\n"
 		forM_ cs $ \c -> case c of
-			ContentText _ text -> tell . escape $ TL.append text "\n"
-			ContentMacro _ indent name -> tell $ formatMacro indent name
+			ContentText _ text -> do
+				tell (escape text)
+				tell "\n"
+			ContentMacro _ indent name -> tell (formatMacro indent name)
 		tell "</pre>"
 
-formatMacro :: TL.Text -> TL.Text -> TL.Text
-formatMacro indent name = TL.concat [indent, "<i>&#xAB;", escape name, "&#xBB;</i>\n"]
+formatMacro :: Text -> Text -> Text
+formatMacro indent name = mconcat [indent, "<i>&#xAB;", escape name, "&#xBB;</i>\n"]
 
-escape :: TL.Text -> TL.Text
-escape = TL.concatMap $ \c -> case c of
+escape :: Text -> Text
+escape = Data.Text.concatMap $ \c -> case c of
 	'&' -> "&amp;"
 	'<' -> "&lt;"
 	'>' -> "&gt;"
 	'"' -> "&quot;"
 	'\'' -> "&apos;"
-	_ -> TL.singleton c
+	_ -> Data.Text.singleton c

@@ -28,11 +28,12 @@ import qualified Control.Exception as E
 import qualified Control.Monad.State as S
 import           Control.Monad.Trans (lift)
 import           Data.List (unfoldr)
-import qualified Data.Map as Map
+import           Data.Map (Map)
+import qualified Data.Map
 import           Data.String (fromString)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Data.Text.Lazy as TL
+import           Data.Text (Text)
+import qualified Data.Text
+import           Data.Text.Encoding (decodeUtf8)
 import           Data.Typeable (Typeable)
 import qualified System.File
 import           System.FilePath (FilePath)
@@ -44,7 +45,7 @@ import           Anansi.Util
 
 data ParseError = ParseError
 	{ parseErrorPosition :: Position
-	, parseErrorMessage :: TL.Text
+	, parseErrorMessage :: Text
 	}
 	deriving (Show)
 
@@ -55,10 +56,10 @@ data ParseExc = ParseExc ParseError
 instance E.Exception ParseExc
 
 data Command
-	= CommandInclude TL.Text
-	| CommandFile TL.Text
-	| CommandDefine TL.Text
-	| CommandOption TL.Text TL.Text
+	= CommandInclude Text
+	| CommandFile Text
+	| CommandDefine Text
+	| CommandOption Text Text
 	| CommandColon
 	| CommandEndBlock
 	| CommandComment
@@ -66,16 +67,16 @@ data Command
 
 data Line
 	= LineCommand Position Command
-	| LineText Position TL.Text
+	| LineText Position Text
 	deriving (Show)
 
-untilChar :: Char -> P.Parsec String u TL.Text
-untilChar c = TL.pack <$> P.manyTill P.anyChar (P.try (P.char c))
+untilChar :: Char -> P.Parsec String u Text
+untilChar c = Data.Text.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 
 getPosition :: Monad m => P.ParsecT s u m Position
 getPosition = do
 	pos <- P.getPosition
-	return $ Position (fromString (P.sourceName pos)) (toInteger (P.sourceLine pos))
+	return (Position (fromString (P.sourceName pos)) (toInteger (P.sourceLine pos)))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -93,7 +94,7 @@ parseLine = command <|> text where
 	text = do
 		pos <- getPosition
 		line <- untilChar '\n'
-		return . LineText pos $ TL.append line "\n"
+		return (LineText pos (Data.Text.append line "\n"))
 
 parseCommand :: P.Parsec String u Command
 parseCommand = parsed where
@@ -117,11 +118,11 @@ parseCommand = parsed where
 		key <- P.manyTill P.anyChar (P.try (P.satisfy isSpace))
 		P.skipMany (P.satisfy isSpace)
 		value <- untilChar '\n'
-		return (CommandOption (TL.pack key) value)
+		return (CommandOption (Data.Text.pack key) value)
 	
 	colon = do
 		void (P.char ':')
-		return $ CommandColon
+		return CommandColon
 	
 	comment = do
 		void (P.char '#')
@@ -130,12 +131,12 @@ parseCommand = parsed where
 	
 	endBlock = do
 		line <- untilChar '\n'
-		if TL.all isSpace line
+		if Data.Text.all isSpace line
 			then return CommandEndBlock
 			else do
 				pos <- getPosition
-				let msg = TL.pack $ "unknown command: " ++ show (TL.append ":" line)
-				E.throw $ ParseExc $ ParseError pos msg
+				let msg = Data.Text.pack ("unknown command: " ++ show (Data.Text.append ":" line))
+				E.throw (ParseExc (ParseError pos msg))
 
 -- TODO: more unicode support
 isSpace :: Char -> Bool
@@ -147,87 +148,82 @@ parseBlocks :: [Line] -> Maybe (Either ParseError Block, [Line])
 parseBlocks [] = Nothing
 parseBlocks (line:xs) = parsed where
 	parsed = case line of
-		LineText _ text -> Just (Right $ BlockText text, xs)
+		LineText _ text -> Just (Right (BlockText text), xs)
 		LineCommand pos cmd -> case cmd of
 			CommandFile path -> parseContent pos (BlockFile path) xs
 			CommandDefine name -> parseContent pos (BlockDefine name) xs
 			CommandOption key value -> Just (Right (BlockOption key value), xs)
-			CommandColon -> Just (Right $ BlockText ":", xs)
-			CommandEndBlock -> Just (Right $ BlockText "\n", xs)
-			CommandComment -> Just (Right $ BlockText "", xs)
+			CommandColon -> Just (Right (BlockText ":"), xs)
+			CommandEndBlock -> Just (Right (BlockText "\n"), xs)
+			CommandComment -> Just (Right (BlockText ""), xs)
 			CommandInclude _ -> let
 				msg = "unexpected CommandInclude (internal error)"
-				in Just (Left $ ParseError pos msg, [])
+				in Just (Left (ParseError pos msg), [])
 
 parseContent :: Position -> ([Content] -> Block) -> [Line] -> Maybe (Either ParseError Block, [Line])
 parseContent start block = parse [] where
-	parse acc [] = Just (Right $ block acc, [])
+	parse acc [] = Just (Right (block acc), [])
 	parse acc (line:xs) = case line of
 		LineText pos text -> case parse' pos text of
 			Left err -> Just (Left err, [])
 			Right parsed -> parse (acc ++ [parsed]) xs
-		LineCommand _ CommandEndBlock -> Just (Right $ block acc, xs)
+		LineCommand _ CommandEndBlock -> Just (Right (block acc), xs)
 		LineCommand _ _ -> let
 			msg = "Unterminated content block"
-			in Just (Left $ ParseError start msg, [])
+			in Just (Left (ParseError start msg), [])
 	
-	parse' pos text = case P.parse (parser pos) "" (TL.unpack text) of
+	parse' pos text = case P.parse (parser pos) "" (Data.Text.unpack text) of
 		Right content -> Right content
 		Left err -> let
-			msg = TL.pack $ "Invalid content line " ++ show text ++ ": " ++ show err
-			in Left $ ParseError pos msg
+			msg = Data.Text.pack ("Invalid content line " ++ show text ++ ": " ++ show err)
+			in Left (ParseError pos msg)
 	
 	parser pos = do
 		content <- contentMacro pos <|> contentText pos
-		P.optional $ P.char '\n'
+		P.optional (P.char '\n')
 		P.eof
 		return content
 	
 	contentMacro pos = do
 		(indent, c) <- P.try $ do
-			indent <- P.many $ P.satisfy isSpace
+			indent <- P.many (P.satisfy isSpace)
 			void (P.char '|')
 			c <- P.satisfy (not . isSpace)
 			return (indent, c)
 		name <- untilChar '|'
-		return $ ContentMacro pos (TL.pack indent) (TL.strip (TL.cons c name))
+		return (ContentMacro pos (Data.Text.pack indent) (Data.Text.strip (Data.Text.cons c name)))
 	
 	contentText pos = do
 		text <- untilChar '\n'
-		return . ContentText pos $ text
+		return (ContentText pos text)
 
-type FileMap = Map.Map FilePath [Line]
+type FileMap = Map FilePath [Line]
 
 genLines :: Monad m => (FilePath -> m [Line]) -> FilePath -> S.StateT FileMap m [Line]
 genLines getLines = genLines' where
 	genLines' path = lift (getLines path) >>= concatMapM (resolveIncludes path)
 	
-	textToPath :: TL.Text -> FilePath
-	textToPath = fromString . TL.unpack
-	
-	relative :: FilePath -> TL.Text -> FilePath
-	relative x y = FP.append (FP.parent x) (textToPath y)
-	
-	-- relative x y = TL.pack $ replaceFileName (TL.unpack x) (TL.unpack y)
+	relative :: FilePath -> Text -> FilePath
+	relative x y = FP.append (FP.parent x) (FP.fromText y)
 	
 	resolveIncludes root line = case line of
-		LineCommand _ (CommandInclude path) -> genLines' $ relative root path
+		LineCommand _ (CommandInclude path) -> genLines' (relative root path)
 		_ -> return [line]
 
 parseFile :: FilePath -> IO (Either ParseError [Block])
 parseFile root = io where
 	io = E.handle onError $ do
-		lines' <- S.evalStateT (genLines getLines root) Map.empty
-		return . catEithers $ unfoldr parseBlocks lines'
+		lines' <- S.evalStateT (genLines getLines root) Data.Map.empty
+		return (catEithers (unfoldr parseBlocks lines'))
 	
-	onError (ParseExc err) = return $ Left err
+	onError (ParseExc err) = return (Left err)
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
 		bytes <- System.File.readFile path
-		let contents = T.unpack (TE.decodeUtf8 bytes)
+		let contents = Data.Text.unpack (decodeUtf8 bytes)
 		case P.parse parseLines (show path) contents of
 			Right x -> return x
 			Left err -> let
-				msg = TL.pack $ "getLines parse failed (internal error): " ++ show err
-				in E.throw $ ParseExc $ ParseError (Position path 0) msg
+				msg = Data.Text.pack ("getLines parse failed (internal error): " ++ show err)
+				in E.throw (ParseExc (ParseError (Position path 0) msg))

@@ -19,7 +19,7 @@ module Anansi.Loom.Debug (loomDebug) where
 
 import           Control.Monad (forM_)
 import           Control.Monad.Writer (tell)
-import           Data.Text.Lazy (pack)
+import           Data.Text (pack)
 
 import           Anansi.Loom
 
@@ -28,4 +28,4 @@ loomDebug = Loom "debug" $ \blocks -> do
 	tell "\nweaving\n"
 	tell "==========================\n"
 	forM_ blocks $ \b -> do
-		tell . pack $ show b ++ "\n"
+		tell (pack (show b ++ "\n"))

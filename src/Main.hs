@@ -20,12 +20,13 @@ module Main (main) where
 import           Prelude hiding (FilePath)
 
 import           Control.Monad.Writer
-import qualified Data.ByteString.Lazy as BL
+import           Data.ByteString (ByteString)
+import qualified Data.ByteString
 import           Data.String (fromString)
-import qualified Data.Text as T
-import qualified Data.Text.Lazy as TL
-import qualified Data.Text.Lazy.IO as TLIO
-import           Data.Text.Lazy.Encoding (encodeUtf8)
+import           Data.Text (Text)
+import qualified Data.Text
+import qualified Data.Text.IO
+import           Data.Text.Encoding (encodeUtf8)
 import           Data.Version (showVersion)
 import           System.Console.GetOpt
 import           System.Directory
@@ -45,7 +46,7 @@ data Output = Tangle | Weave
 data Option
 	= OptionOutput Output
 	| OptionOutputPath FilePath
-	| OptionLoom TL.Text
+	| OptionLoom Text
 	| OptionNoLines
 	| OptionVersion
 	deriving (Eq)
@@ -58,7 +59,7 @@ optionInfo =
 	  "Generate woven markup"
 	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . fromString) "PATH")
 	  "Output path (directory for tangle, file for weave)"
-	, Option ['l'] ["loom"] (ReqArg (OptionLoom . TL.pack) "NAME")
+	, Option ['l'] ["loom"] (ReqArg (OptionLoom . Data.Text.pack) "NAME")
 	  "Which loom should be used to weave output"
 	, Option [] ["noline"] (NoArg OptionNoLines)
 	  "Disable generating #line declarations in tangled code"
@@ -85,7 +86,7 @@ withFile path io = if FP.null path
 	then io stdout
 	else System.File.withFile path WriteMode io
 
-loomMap :: [(TL.Text, Loom)]
+loomMap :: [(Text, Loom)]
 loomMap = [(loomName l, l) | l <- looms]
 
 getLoom :: [Option] -> Loom
@@ -93,7 +94,7 @@ getLoom [] = loomLaTeX
 getLoom (x:xs) = case x of
 	OptionLoom name -> case lookup name loomMap of
 		Just loom -> loom
-		Nothing -> error $ "Unknown loom: " ++ show name
+		Nothing -> error ("Unknown loom: " ++ show name)
 	_ -> getLoom xs
 
 getEnableLines :: [Option] -> Bool
@@ -108,8 +109,8 @@ main = do
 	let (options, inputs, errors) = getOpt Permute optionInfo args
 	unless (null errors) $ do
 		name <- getProgName
-		hPutStrLn stderr $ concat errors
-		hPutStrLn stderr $ usageInfo (usage name) optionInfo
+		hPutStrLn stderr (concat errors)
+		hPutStrLn stderr (usageInfo (usage name) optionInfo)
 		exitFailure
 	
 	when (OptionVersion `elem` options) $ do
@@ -130,18 +131,18 @@ main = do
 				"" -> tangle debugTangle enableLines blocks
 				_ -> tangle (realTangle path) enableLines blocks
 			Weave -> let
-				texts = execWriter $ loomWeave loom blocks
-				in withFile path $ \h -> BL.hPut h $ encodeUtf8 texts
+				texts = execWriter (loomWeave loom blocks)
+				in withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 texts))
 
-debugTangle :: FilePath -> TL.Text -> IO ()
+debugTangle :: FilePath -> Text -> IO ()
 debugTangle path text = do
-	let strPath = either T.unpack T.unpack (FP.toText path)
+	let strPath = either Data.Text.unpack Data.Text.unpack (FP.toText path)
 	putStr "\n"
 	putStrLn strPath
-	putStrLn $ replicate (fromIntegral (length strPath)) '='
-	TLIO.putStr text
+	putStrLn (replicate (fromIntegral (length strPath)) '=')
+	Data.Text.IO.putStr text
 
-realTangle :: FilePath -> FilePath -> TL.Text -> IO ()
+realTangle :: FilePath -> FilePath -> Text -> IO ()
 realTangle root path text = do
 	let fullpath = FP.append root path
 	createTree (FP.parent fullpath)
@@ -150,39 +151,39 @@ realTangle root path text = do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
 			hSetFileSize h 0
-			BL.hPut h bytes
+			Data.ByteString.hPut h bytes
 
-fileContentsEqual :: Handle -> BL.ByteString -> IO Bool
+fileContentsEqual :: Handle -> ByteString -> IO Bool
 fileContentsEqual h bytes = do
 	hSeek h SeekFromEnd 0
 	size <- hTell h
 	hSeek h AbsoluteSeek 0
 	
-	if size /= toInteger (BL.length bytes)
+	if size /= toInteger (Data.ByteString.length bytes)
 		then return False
 		else do
 			-- FIXME: 'Int' overflow?
-			contents <- BL.hGet h (fromInteger size)
+			contents <- Data.ByteString.hGet h (fromInteger size)
 			hSeek h AbsoluteSeek 0
-			return $ bytes == contents
+			return (bytes == contents)
 
 parseInputs :: [String] -> IO (Either ParseError [Block])
 parseInputs inputs = do
 	eithers <- mapM (parseFile . fromString) inputs
 	return $ case catEithers eithers of
 		Left err -> Left err
-		Right bs -> Right $ concat bs
+		Right bs -> Right (concat bs)
 
 formatError :: ParseError -> String
 formatError err = concat [filename, ":", line, ": error: ", message] where
 	pos = parseErrorPosition err
-	filename = either T.unpack T.unpack (FP.toText (positionFile pos))
-	line = show $ positionLine pos
-	message = TL.unpack $ parseErrorMessage err
+	filename = either Data.Text.unpack Data.Text.unpack (FP.toText (positionFile pos))
+	line = show (positionLine pos)
+	message = Data.Text.unpack (parseErrorMessage err)
 
 catEithers :: [Either e a] -> Either e [a]
 catEithers = cat' [] where
-	cat' acc [] = Right $ reverse acc
+	cat' acc [] = Right (reverse acc)
 	cat' acc (e:es) = case e of
 		Left err -> Left err
 		Right x -> cat' (x : acc) es

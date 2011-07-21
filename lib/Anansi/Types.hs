@@ -21,7 +21,7 @@ module Anansi.Types
 
 import           Prelude hiding (FilePath)
 
-import           Data.Text.Lazy (Text)
+import           Data.Text (Text)
 import           System.FilePath.CurrentOS (FilePath)
 
 data Block
