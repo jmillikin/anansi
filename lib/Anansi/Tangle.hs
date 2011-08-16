@@ -23,8 +23,8 @@ import qualified Control.Monad.Writer as W
 import Data.String (fromString)
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
-import System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
+import Filesystem.Path (FilePath)
+import qualified Filesystem.Path.CurrentOS as FP
 import Anansi.Types
 import Anansi.Util
 

@@ -32,9 +32,9 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.Lazy as TL
 import qualified Data.Map as Map
-import System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
-import qualified System.File
+import Filesystem.Path (FilePath)
+import qualified Filesystem.Path.CurrentOS as FP
+import qualified Filesystem
 import Anansi.Types
 import Anansi.Util
 
@@ -71,7 +71,7 @@ untilChar c = TL.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 getPosition :: Monad m => P.ParsecT s u m Position
 getPosition = do
 	pos <- P.getPosition
-	return $ Position (fromString (P.sourceName pos)) (toInteger (P.sourceLine pos))
+	return $ Position (FP.decodeString (P.sourceName pos)) (toInteger (P.sourceLine pos))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -220,9 +220,9 @@ parseFile root = io where
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
-		bytes <- System.File.readFile path
+		bytes <- Filesystem.readFile path
 		let contents = T.unpack (TE.decodeUtf8 bytes)
-		case P.parse parseLines (show path) contents of
+		case P.parse parseLines (FP.encodeString path) contents of
 			Right x -> return x
 			Left err -> let
 				msg = TL.pack $ "getLines parse failed (internal error): " ++ show err
