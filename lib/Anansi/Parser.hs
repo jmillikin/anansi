@@ -30,14 +30,13 @@ import           Control.Monad.Trans (lift)
 import           Data.List (unfoldr)
 import           Data.Map (Map)
 import qualified Data.Map
-import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text
 import           Data.Text.Encoding (decodeUtf8)
 import           Data.Typeable (Typeable)
-import qualified System.File
-import           System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
+import qualified Filesystem
+import           Filesystem.Path (FilePath)
+import qualified Filesystem.Path.CurrentOS as FP
 import qualified Text.Parsec as P
 
 import           Anansi.Types
@@ -76,7 +75,7 @@ untilChar c = Data.Text.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 getPosition :: Monad m => P.ParsecT s u m Position
 getPosition = do
 	pos <- P.getPosition
-	return (Position (fromString (P.sourceName pos)) (toInteger (P.sourceLine pos)))
+	return (Position (FP.decodeString (P.sourceName pos)) (toInteger (P.sourceLine pos)))
 
 parseLines :: P.Parsec String u [Line]
 parseLines = do
@@ -220,9 +219,9 @@ parseFile root = io where
 	
 	getLines :: FilePath -> IO [Line]
 	getLines path = do
-		bytes <- System.File.readFile path
+		bytes <- Filesystem.readFile path
 		let contents = Data.Text.unpack (decodeUtf8 bytes)
-		case P.parse parseLines (show path) contents of
+		case P.parse parseLines (FP.encodeString path) contents of
 			Right x -> return x
 			Left err -> let
 				msg = Data.Text.pack ("getLines parse failed (internal error): " ++ show err)

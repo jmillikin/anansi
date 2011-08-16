@@ -22,7 +22,7 @@ module Anansi.Types
 import           Prelude hiding (FilePath)
 
 import           Data.Text (Text)
-import           System.FilePath.CurrentOS (FilePath)
+import           Filesystem.Path.CurrentOS (FilePath)
 
 data Block
 	= BlockText Text

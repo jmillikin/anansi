@@ -28,13 +28,12 @@ import qualified Data.Text
 import qualified Data.Text.IO
 import           Data.Text.Encoding (encodeUtf8)
 import           Data.Version (showVersion)
+import qualified Filesystem
+import           Filesystem.Path (FilePath)
+import qualified Filesystem.Path.CurrentOS as FP
 import           System.Console.GetOpt
-import           System.Directory
 import           System.Environment
 import           System.Exit
-import qualified System.File
-import           System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
 import           System.IO hiding (withFile, FilePath)
 
 import           Anansi
@@ -84,7 +83,7 @@ getPath (x:xs) = case x of
 withFile :: FilePath -> (Handle -> IO a) -> IO a
 withFile path io = if FP.null path
 	then io stdout
-	else System.File.withFile path WriteMode io
+	else Filesystem.withFile path WriteMode io
 
 loomMap :: [(Text, Loom)]
 loomMap = [(loomName l, l) | l <- looms]
@@ -145,9 +144,9 @@ debugTangle path text = do
 realTangle :: FilePath -> FilePath -> Text -> IO ()
 realTangle root path text = do
 	let fullpath = FP.append root path
-	createTree (FP.parent fullpath)
+	Filesystem.createTree (FP.parent fullpath)
 	let bytes = encodeUtf8 text
-	System.File.withFile fullpath ReadWriteMode $ \h -> do
+	Filesystem.withFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do
 			hSetFileSize h 0

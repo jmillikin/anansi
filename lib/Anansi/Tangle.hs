@@ -26,8 +26,8 @@ import           Data.Map (Map)
 import qualified Data.Map
 import           Data.Text (Text)
 import qualified Data.Text
-import           System.FilePath (FilePath)
-import qualified System.FilePath.CurrentOS as FP
+import           Filesystem.Path (FilePath)
+import qualified Filesystem.Path.CurrentOS as FP
 
 import           Anansi.Types
 import           Anansi.Util
@@ -100,7 +100,7 @@ putPosition :: Monad m => Bool -> Position -> TangleT m ()
 putPosition enableLine pos = do
 	TangleState lastPos indent macros <- S.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
-	let filename = FP.toText (positionFile pos)
+	let filename = either id id (FP.toText (positionFile pos))
 	let line = if enableLine
 		then "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
 		else "\n"
