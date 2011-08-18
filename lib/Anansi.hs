@@ -14,7 +14,10 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 module Anansi
-	( Block (..)
+	(
+	  defaultMain
+	
+	, Block (..)
 	, Content (..)
 	, Position (..)
 	
@@ -22,7 +25,7 @@ module Anansi
 	, parseFile
 	
 	, Loom (..)
-	, looms
+	, defaultLooms
 	, loomDebug
 	, loomHTML
 	, loomLaTeX
@@ -36,9 +39,10 @@ import           Anansi.Loom.Debug
 import           Anansi.Loom.HTML
 import           Anansi.Loom.LaTeX
 import           Anansi.Loom.NoWeb
+import           Anansi.Main
 import           Anansi.Parser
 import           Anansi.Tangle
 import           Anansi.Types
 
-looms :: [Loom]
-looms = [loomDebug, loomHTML, loomLaTeX, loomNoWeb]
+defaultLooms :: [Loom]
+defaultLooms = [loomDebug, loomHTML, loomLaTeX, loomNoWeb]
