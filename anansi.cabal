@@ -1,6 +1,5 @@
 name: anansi
 version: 0.3.3
-synopsis: Simple literate programming preprocessor
 license: GPL-3
 license-file: license.txt
 author: John Millikin
@@ -12,6 +11,20 @@ stability: experimental
 bug-reports: mailto:jmillikin@gmail.com
 homepage: http://john-millikin.com/software/anansi/
 tested-with: GHC==6.12.1
+
+synopsis: Simple literate programming preprocessor
+description:
+  Anansi is a preprocessor for literate programs, in the model of NoWeb or
+  nuweb. Literate programming allows computer code and a human-readable
+  document to be generated from the same source. Compared to NoWeb,
+  Anansi&#x2019;s primary benefits are the ability to include separate files,
+  and to automatically generate an entire directory tree from a project
+  without having to enumerate each output.
+  .
+  This package is split into a library and an executable. The executable is
+  suitable for simple cases, such as generating basic HTML or NoWeb. The
+  library is useful for users who would like to write their own output formats
+  (called &#x201C;looms&#x201D;).
 
 source-repository head
   type: bazaar
