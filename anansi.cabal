@@ -9,7 +9,7 @@ cabal-version: >=1.8
 category: Development
 stability: experimental
 bug-reports: mailto:jmillikin@gmail.com
-homepage: http://john-millikin.com/software/anansi/
+homepage: https://john-millikin.com/software/anansi/
 tested-with: GHC==6.12.1
 
 synopsis: Simple literate programming preprocessor
@@ -28,7 +28,12 @@ description:
 
 source-repository head
   type: bazaar
-  location: http://john-millikin.com/software/anansi/
+  location: https://john-millikin.com/software/anansi/
+
+source-repository this
+  type: bazaar
+  location: https://john-millikin.com/branches/anansi/0.3/
+  tag: anansi_0.3.3
 
 library
   hs-source-dirs: lib
