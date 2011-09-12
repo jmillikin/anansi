@@ -31,7 +31,7 @@ data LoomState = LoomState { stateTabSize :: Integer }
 type LoomM = S.StateT LoomState (Writer Text)
 
 loomNoWeb :: Loom
-loomNoWeb = Loom "latex-noweb" (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
+loomNoWeb = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 	initState = LoomState 8
 	
 	putBlock b = case b of

@@ -24,7 +24,7 @@ import           Data.Text (pack)
 import           Anansi.Types
 
 loomDebug :: Loom
-loomDebug = Loom "debug" $ \blocks -> do
+loomDebug = Loom $ \blocks -> do
 	tell "\nweaving\n"
 	tell "==========================\n"
 	forM_ blocks $ \b -> do

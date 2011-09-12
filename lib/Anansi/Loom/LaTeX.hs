@@ -31,7 +31,7 @@ data LoomState = LoomState { stateTabSize :: Integer }
 type LoomM = S.StateT LoomState (Writer Text)
 
 loomLaTeX :: Loom
-loomLaTeX = Loom "latex" (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
+loomLaTeX = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 	initState = LoomState 8
 	
 	putBlock b = case b of

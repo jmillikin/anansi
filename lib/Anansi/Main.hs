@@ -24,6 +24,7 @@ import           Prelude hiding (FilePath)
 import           Control.Monad.Writer
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString
+import qualified Data.Map
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text
@@ -91,13 +92,11 @@ withFile path io = if FP.null path
 	then io stdout
 	else Filesystem.withFile path WriteMode io
 
-getLoom :: [Loom] -> [Option] -> Loom
+getLoom :: Data.Map.Map Text Loom -> [Option] -> Loom
 getLoom looms = loop where
-	loomMap = [(loomName l, l) | l <- looms]
-	
 	loop [] = loomLaTeX
 	loop (x:xs) = case x of
-		OptionLoom name -> case lookup name loomMap of
+		OptionLoom name -> case Data.Map.lookup name looms of
 			Just loom -> loom
 			Nothing -> error ("Unknown loom: " ++ show name)
 		_ -> loop xs
@@ -108,7 +107,7 @@ getEnableLines (x:xs) = case x of
 	OptionNoLines -> False
 	_ -> getEnableLines xs
 
-defaultMain :: [Loom] -> IO ()
+defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
 	args <- getArgs
 	let (options, inputs, errors) = getOpt Permute optionInfo args

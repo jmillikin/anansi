@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
@@ -34,6 +36,9 @@ module Anansi
 	, tangle
 	) where
 
+import           Data.Map (Map, fromList)
+import           Data.Text (Text)
+
 import           Anansi.Loom.Debug
 import           Anansi.Loom.HTML
 import           Anansi.Loom.LaTeX
@@ -43,5 +48,10 @@ import           Anansi.Parser
 import           Anansi.Tangle
 import           Anansi.Types
 
-defaultLooms :: [Loom]
-defaultLooms = [loomDebug, loomHTML, loomLaTeX, loomNoWeb]
+defaultLooms :: Map Text Loom
+defaultLooms = fromList
+	[ ("debug", loomDebug)
+	, ("html", loomHTML)
+	, ("latex", loomLaTeX)
+	, ("latex-noweb", loomNoWeb)
+	]

@@ -26,7 +26,7 @@ import qualified Data.Text
 import           Anansi.Types
 
 loomHTML :: Loom
-loomHTML = Loom "html" $ mapM_ putBlock where
+loomHTML = Loom $ mapM_ putBlock where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> let

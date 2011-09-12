@@ -39,8 +39,7 @@ data Content
 	deriving (Show)
 
 data Loom = Loom
-	{ loomName :: Text
-	, loomWeave :: [Block] -> Writer Text ()
+	{ loomWeave :: [Block] -> Writer Text ()
 	}
 
 data Position = Position
