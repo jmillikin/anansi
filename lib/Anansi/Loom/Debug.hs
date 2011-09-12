@@ -21,7 +21,7 @@ import           Control.Monad (forM_)
 import           Control.Monad.Writer (tell)
 import           Data.Text (pack)
 
-import           Anansi.Loom
+import           Anansi.Types
 
 loomDebug :: Loom
 loomDebug = Loom "debug" $ \blocks -> do

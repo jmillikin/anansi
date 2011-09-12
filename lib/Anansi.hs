@@ -34,7 +34,6 @@ module Anansi
 	, tangle
 	) where
 
-import           Anansi.Loom
 import           Anansi.Loom.Debug
 import           Anansi.Loom.HTML
 import           Anansi.Loom.LaTeX

@@ -23,7 +23,6 @@ import           Data.Monoid (mconcat)
 import           Data.Text (Text)
 import qualified Data.Text
 
-import           Anansi.Loom
 import           Anansi.Types
 
 loomHTML :: Loom

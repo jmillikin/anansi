@@ -16,11 +16,13 @@
 module Anansi.Types
 	( Block (..)
 	, Content (..)
+	, Loom (..)
 	, Position (..)
 	) where
 
 import           Prelude hiding (FilePath)
 
+import           Control.Monad.Writer
 import           Data.Text (Text)
 import           Filesystem.Path.CurrentOS (FilePath)
 
@@ -35,6 +37,11 @@ data Content
 	= ContentText Position Text
 	| ContentMacro Position Text Text
 	deriving (Show)
+
+data Loom = Loom
+	{ loomName :: Text
+	, loomWeave :: [Block] -> Writer Text ()
+	}
 
 data Position = Position
 	{ positionFile :: FilePath

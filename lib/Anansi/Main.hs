@@ -38,7 +38,6 @@ import           System.Environment
 import           System.Exit
 import           System.IO hiding (withFile, FilePath)
 
-import           Anansi.Loom
 import           Anansi.Loom.LaTeX
 import           Anansi.Parser
 import           Anansi.Tangle
