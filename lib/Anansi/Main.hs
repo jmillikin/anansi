@@ -55,11 +55,14 @@ data Option
 	| OptionLoom Text
 	| OptionNoLines
 	| OptionVersion
+	| OptionHelp
 	deriving (Eq)
 
 optionInfo :: [OptDescr Option]
 optionInfo =
-	[ Option ['t'] ["tangle"] (NoArg (OptionOutput Tangle))
+	[ Option ['h'] ["help"] (NoArg OptionHelp) ""
+	, Option [] ["version"] (NoArg OptionVersion) ""
+	, Option ['t'] ["tangle"] (NoArg (OptionOutput Tangle))
 	  "Generate tangled source code (default)"
 	, Option ['w'] ["weave"] (NoArg (OptionOutput Weave))
 	  "Generate woven markup"
@@ -68,8 +71,7 @@ optionInfo =
 	, Option ['l'] ["loom"] (ReqArg (OptionLoom . Data.Text.pack) "NAME")
 	  "Which loom should be used to weave output"
 	, Option [] ["noline"] (NoArg OptionNoLines)
-	  "Disable generating #line declarations in tangled code"
-	, Option [] ["version"] (NoArg OptionVersion) ""
+	  "Disable generating #line pragmas in tangled code"
 	]
 
 usage :: String -> String
@@ -117,6 +119,11 @@ defaultMain looms = do
 		hPutStrLn stderr (usageInfo (usage name) optionInfo)
 		exitFailure
 	
+	when (OptionHelp `elem` options) $ do
+		name <- getProgName
+		putStrLn (usageInfo (usage name) optionInfo)
+		exitSuccess
+		
 	when (OptionVersion `elem` options) $ do
 		putStrLn ("anansi_" ++ showVersion version)
 		exitSuccess
