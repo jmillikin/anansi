@@ -53,6 +53,7 @@ library
     Anansi
 
   other-modules:
+    Paths_anansi
     Anansi.Loom.Debug
     Anansi.Loom.HTML
     Anansi.Loom.LaTeX
