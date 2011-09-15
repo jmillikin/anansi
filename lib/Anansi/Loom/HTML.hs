@@ -26,7 +26,7 @@ import qualified Data.Text
 import           Anansi.Types
 
 loomHTML :: Loom
-loomHTML = Loom $ mapM_ putBlock where
+loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> let
@@ -35,7 +35,6 @@ loomHTML = Loom $ mapM_ putBlock where
 		BlockDefine name content -> let
 			label = mconcat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
 			in putContent label content
-		BlockOption _ _ -> return ()
 	
 	putContent label cs = do
 		tell "<pre>"

@@ -47,7 +47,6 @@ accumMacro b = case b of
 	BlockDefine name content -> do
 		macros <- S.get
 		S.put (Data.Map.insertWith (\new old -> old ++ new) name content macros)
-	BlockOption _ _ -> return ()
 
 buildFiles :: [Block] -> ContentMap
 buildFiles blocks = S.execState (mapM_ accumFile blocks) Data.Map.empty
@@ -60,7 +59,6 @@ accumFile b = case b of
 		let accum new old = old ++ new
 		files <- S.get
 		S.put (Data.Map.insertWith accum name content files)
-	BlockOption _ _ -> return ()
 
 tangle :: Monad m
        => (FilePath -> Text -> m ())

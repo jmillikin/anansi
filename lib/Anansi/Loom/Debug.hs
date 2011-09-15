@@ -24,8 +24,8 @@ import           Data.Text (pack)
 import           Anansi.Types
 
 loomDebug :: Loom
-loomDebug = Loom $ \blocks -> do
+loomDebug = Loom $ \doc -> do
 	tell "\nweaving\n"
 	tell "==========================\n"
-	forM_ blocks $ \b -> do
+	forM_ (documentBlocks doc) $ \b -> do
 		tell (pack (show b ++ "\n"))

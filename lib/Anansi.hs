@@ -17,23 +17,39 @@
 
 module Anansi
 	(
+	-- * Basic operations
 	  defaultMain
+	, tangle
+	, weave
 	
+	-- * Documents
+	, Document
+	, documentBlocks
+	, documentOptions
 	, Block (..)
 	, Content (..)
-	, Position (..)
 	
-	, ParseError (..)
+	, Position
+	, positionFile
+	, positionLine
+	
+	-- * Document parsing
+	, ParseError
+	, parseErrorPosition
+	, parseErrorMessage
 	, parseFile
 	
+	-- * Looms
 	, Loom (..)
+	, LoomOptions
+	, loomOptionTabSize
+	
+	-- ** Built-in looms
 	, defaultLooms
 	, loomDebug
 	, loomHTML
 	, loomLaTeX
 	, loomNoWeb
-	
-	, tangle
 	) where
 
 import           Data.Map (Map, fromList)

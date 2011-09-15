@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 -- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 -- 
 -- This program is free software: you can redistribute it and/or modify
@@ -16,13 +18,25 @@
 module Anansi.Types
 	( Block (..)
 	, Content (..)
-	, Loom (..)
 	, Position (..)
+	, ParseError (..)
+	
+	, Document (..)
+	
+	, Loom (..)
+	, LoomM
+	, LoomOptions
+	, loomOptionTabSize
+	, weave
 	) where
 
 import           Prelude hiding (FilePath)
 
-import           Control.Monad.Writer
+import           Control.Monad.Reader (ReaderT, runReaderT)
+import           Control.Monad.Writer (Writer, execWriter)
+import qualified Data.Map
+import           Data.Map (Map)
+import qualified Data.Text
 import           Data.Text (Text)
 import           Filesystem.Path.CurrentOS (FilePath)
 
@@ -30,20 +44,46 @@ data Block
 	= BlockText Text
 	| BlockFile Text [Content]
 	| BlockDefine Text [Content]
-	| BlockOption Text Text
-	deriving (Show)
+	deriving (Eq, Show)
 
 data Content
 	= ContentText Position Text
 	| ContentMacro Position Text Text
-	deriving (Show)
-
-data Loom = Loom
-	{ loomWeave :: [Block] -> Writer Text ()
-	}
+	deriving (Eq, Show)
 
 data Position = Position
 	{ positionFile :: FilePath
 	, positionLine :: Integer
 	}
-	deriving (Show, Eq)
+	deriving (Eq, Show)
+
+data ParseError = ParseError
+	{ parseErrorPosition :: Position
+	, parseErrorMessage :: Text
+	}
+	deriving (Eq, Show)
+
+data Document = Document
+	{ documentBlocks :: [Block]
+	, documentOptions :: Map Text Text
+	}
+	deriving (Eq, Show)
+
+type LoomM = ReaderT LoomOptions (Writer Text)
+newtype Loom = Loom (Document -> ReaderT LoomOptions (Writer Text) ())
+
+weave :: Loom -> Document -> Text
+weave (Loom m) doc = execWriter (runReaderT
+	(m doc)
+	(parseLoomOptions (documentOptions doc)))
+
+data LoomOptions = LoomOptions
+	{ loomOptionTabSize :: Integer
+	}
+
+parseLoomOptions :: Map Text Text -> LoomOptions
+parseLoomOptions opts = LoomOptions
+	{ loomOptionTabSize = case Data.Map.lookup "tab-size" opts of
+	  	Just x -> read (Data.Text.unpack x)
+	  	Nothing -> 8
+	}

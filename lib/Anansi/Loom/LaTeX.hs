@@ -18,22 +18,16 @@
 module Anansi.Loom.LaTeX (loomLaTeX) where
 
 import           Control.Monad (forM_)
-import qualified Control.Monad.State as S
-import           Control.Monad.Writer (Writer, tell)
+import           Control.Monad.Reader (asks)
+import           Control.Monad.Writer (tell)
 import           Data.Monoid (mconcat)
 import           Data.Text (Text)
 import qualified Data.Text
 
 import           Anansi.Types
 
-data LoomState = LoomState { stateTabSize :: Integer }
-
-type LoomM = S.StateT LoomState (Writer Text)
-
 loomLaTeX :: Loom
-loomLaTeX = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
-	initState = LoomState 8
-	
+loomLaTeX = Loom (mapM_ putBlock . documentBlocks) where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> do
@@ -51,9 +45,6 @@ loomLaTeX = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 			tell "\\(\\gg\\)}\n"
 			putContent content
 			tell "\\end{alltt}\n"
-		BlockOption key value -> if key == "tab-size"
-			then S.put (LoomState (read (Data.Text.unpack value)))
-			else return ()
 	
 	putContent cs = forM_ cs $ \c -> case c of
 		ContentText _ text -> do
@@ -68,7 +59,7 @@ loomLaTeX = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 
 escape ::  Text -> LoomM Text
 escape text = do
-	tabSize <- S.gets stateTabSize
+	tabSize <- asks loomOptionTabSize
 	
 	return $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "

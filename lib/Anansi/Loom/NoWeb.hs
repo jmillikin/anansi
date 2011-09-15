@@ -18,22 +18,16 @@
 module Anansi.Loom.NoWeb (loomNoWeb) where
 
 import           Control.Monad (forM_)
-import qualified Control.Monad.State as S
-import           Control.Monad.Writer (Writer, tell)
+import           Control.Monad.Reader (asks)
+import           Control.Monad.Writer (tell)
 import           Data.Monoid (mconcat)
 import           Data.Text (Text)
 import qualified Data.Text
 
 import           Anansi.Types
 
-data LoomState = LoomState { stateTabSize :: Integer }
-
-type LoomM = S.StateT LoomState (Writer Text)
-
 loomNoWeb :: Loom
-loomNoWeb = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
-	initState = LoomState 8
-	
+loomNoWeb = Loom (mapM_ putBlock . documentBlocks) where
 	putBlock b = case b of
 		BlockText text -> tell text
 		BlockFile path content -> do
@@ -49,9 +43,6 @@ loomNoWeb = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 			tell "}\\endmoddef\\nwstartdeflinemarkup\\nwenddeflinemarkup\n"
 			putContent content
 			tell "\\nwendcode{}\n"
-		BlockOption key value -> if key == "tab-size"
-			then S.put (LoomState (read (Data.Text.unpack value)))
-			else return ()
 	
 	putContent cs = forM_ cs $ \c -> case c of
 		ContentText _ text -> do
@@ -66,7 +57,7 @@ loomNoWeb = Loom (\bs -> S.evalStateT (mapM_ putBlock bs) initState) where
 
 escapeCode :: Text -> LoomM Text
 escapeCode text = do
-	tabSize <- S.gets stateTabSize
+	tabSize <- asks loomOptionTabSize
 	
 	return $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
@@ -78,7 +69,7 @@ escapeCode text = do
 
 escapeText :: Text -> LoomM Text
 escapeText text = do
-	tabSize <- S.gets stateTabSize
+	tabSize <- asks loomOptionTabSize
 	
 	return $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "

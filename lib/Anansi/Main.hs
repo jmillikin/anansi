@@ -73,7 +73,7 @@ optionInfo =
 	]
 
 usage :: String -> String
-usage name = "Usage: " ++ name ++ " [OPTION...]"
+usage name = "Usage: " ++ name ++ " [OPTION...] <input file>"
 
 getOutput :: [Option] -> Output
 getOutput [] = Tangle
@@ -121,22 +121,31 @@ defaultMain looms = do
 		putStrLn ("anansi_" ++ showVersion version)
 		exitSuccess
 	
+	input <- case inputs of
+		[] -> do
+			hPutStrLn stderr "An input file is required."
+			exitFailure
+		[x] -> return (fromString x)
+		_ -> do
+			hPutStrLn stderr "More than one input file provided."
+			exitFailure
+	
 	let path = getPath options
 	let loom = getLoom looms options
 	let enableLines = getEnableLines options
 	
-	parsed <- parseInputs inputs
-	case parsed of
+	parsedDoc <- parseFile input
+	doc <- case parsedDoc of
 		Left err -> do
 			hPutStrLn stderr (formatError err)
 			exitFailure
-		Right blocks -> case getOutput options of
-			Tangle -> case path of
-				"" -> tangle debugTangle enableLines blocks
-				_ -> tangle (realTangle path) enableLines blocks
-			Weave -> let
-				texts = execWriter (loomWeave loom blocks)
-				in withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 texts))
+		Right x -> return x
+	
+	case getOutput options of
+		Tangle -> case path of
+			"" -> tangle debugTangle enableLines (documentBlocks doc)
+			_ -> tangle (realTangle path) enableLines (documentBlocks doc)
+		Weave -> withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 (weave loom doc)))
 
 debugTangle :: FilePath -> Text -> IO ()
 debugTangle path text = do
@@ -171,23 +180,9 @@ fileContentsEqual h bytes = do
 			hSeek h AbsoluteSeek 0
 			return (bytes == contents)
 
-parseInputs :: [String] -> IO (Either ParseError [Block])
-parseInputs inputs = do
-	eithers <- mapM (parseFile . fromString) inputs
-	return $ case catEithers eithers of
-		Left err -> Left err
-		Right bs -> Right (concat bs)
-
 formatError :: ParseError -> String
 formatError err = concat [filename, ":", line, ": error: ", message] where
 	pos = parseErrorPosition err
 	filename = either Data.Text.unpack Data.Text.unpack (FP.toText (positionFile pos))
 	line = show (positionLine pos)
 	message = Data.Text.unpack (parseErrorMessage err)
-
-catEithers :: [Either e a] -> Either e [a]
-catEithers = cat' [] where
-	cat' acc [] = Right (reverse acc)
-	cat' acc (e:es) = case e of
-		Left err -> Left err
-		Right x -> cat' (x : acc) es

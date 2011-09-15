@@ -16,7 +16,6 @@
 module Anansi.Util
 	( concatMapM
 	, replace
-	, catEithers
 	, void
 	) where
 
@@ -29,13 +28,6 @@ replace :: Eq a => a -> [a] -> [a] -> [a]
 replace from to xs = flip concatMap xs $ \x -> if x == from
 	then to
 	else [x]
-
-catEithers :: [Either e a] -> Either e [a]
-catEithers = cat' [] where
-	cat' acc [] = Right (reverse acc)
-	cat' acc (e:es) = case e of
-		Left err -> Left err
-		Right x -> cat' (x : acc) es
 
 void :: Monad m => m a -> m ()
 void m = m >> return ()
