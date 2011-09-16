@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ ! -f 'anansi.cabal' ]; then
+	echo -n "Can't find anansi.cabal; please run this script as"
+	echo -n " ./scripts/run-tests from within the anansi source"
+	echo " directory"
+	exit 1
+fi
+
+. scripts/common.bash
+
+require_cabal_dev
+
+rm -rf dist
+cabal-dev install || exit 1
+
+pushd tests
+rm -rf dist
+$CABAL_DEV -s ../cabal-dev install || exit 1
+popd
+
+cabal-dev/bin/anansi_tests

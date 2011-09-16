@@ -1,0 +1,21 @@
+#!/bin/bash
+if [ ! -f 'anansi.cabal' ]; then
+	echo -n "Can't find anansi.cabal; please run this script as"
+	echo -n " ./scripts/run-coverage from within the anansi source"
+	echo " directory"
+	exit 1
+fi
+
+. scripts/common.bash
+
+require_cabal_dev
+
+pushd tests
+$CABAL_DEV -s ../cabal-dev install --flags="coverage" || exit 1
+popd
+
+rm -f anansi_tests.tix
+cabal-dev/bin/anansi_tests
+
+hpc markup --srcdir=src/ --srcdir=tests/ anansi_tests.tix --destdir=hpc-markup --exclude=Main --exclude=Paths_anansi > /dev/null
+hpc report --srcdir=src/ --srcdir=tests/ anansi_tests.tix --exclude=Main --exclude=Paths_anansi

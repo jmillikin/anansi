@@ -1,0 +1,27 @@
+name: anansi-tests
+version: 0
+build-type: Simple
+cabal-version: >= 1.6
+
+flag coverage
+  default: False
+  manual: True
+
+executable anansi_tests
+  main-is: Tests.hs
+  ghc-options: -Wall
+  hs-source-dirs: ../lib,.
+
+  if flag(coverage)
+    ghc-options: -fhpc
+
+  build-depends:
+      base >= 4.0 && < 5.0
+    , bytestring >= 0.9 && < 0.10
+    , chell >= 0.1 && < 0.2
+    , containers >= 0.1 && < 0.5
+    , monads-tf >= 0.1 && < 0.2
+    , parsec >= 3.0 && < 3.2
+    , system-filepath >= 0.3.1 && < 0.5
+    , system-fileio >= 0.2.1 && < 0.4
+    , text >= 0.7 && < 0.12
