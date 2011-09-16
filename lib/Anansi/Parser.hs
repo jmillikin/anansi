@@ -24,7 +24,7 @@ import           Prelude hiding (FilePath, lines)
 
 import           Control.Applicative ((<|>), (<$>))
 import           Control.Monad.Error (ErrorT, Error, runErrorT, throwError)
-import           Control.Monad.Trans (MonadIO, lift, liftIO)
+import           Control.Monad.Trans (MonadIO, liftIO)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
@@ -109,6 +109,9 @@ type ParserM m = P.ParsecT String () (ErrorT ParseError m)
 untilChar :: Monad m => Char -> ParserM m Text
 untilChar c = Data.Text.pack <$> P.manyTill P.anyChar (P.try (P.char c))
 
+parseError :: Monad m => Position -> Text -> ParserM m a
+parseError pos msg = P.mkPT (\_ -> throwError (ParseError pos msg))
+
 getPosition :: Monad m => ParserM m Position
 getPosition = do
 	pos <- P.getPosition
@@ -174,7 +177,7 @@ parseCommand = parsed where
 			else do
 				pos <- getPosition
 				let msg = Data.Text.pack ("unknown command: " ++ show (Data.Text.append ":" line))
-				lift (throwError (ParseError pos msg))
+				parseError pos msg
 
 -- TODO: more unicode support
 isSpace :: Char -> Bool
