@@ -8,6 +8,7 @@ import           Prelude hiding (FilePath)
 import qualified Control.Monad.State as State
 import           Control.Monad.Identity (runIdentity)
 import           Data.ByteString (ByteString)
+import qualified Data.ByteString.Char8 as ByteString
 import qualified Data.Map as Map
 import           Data.Map (Map)
 import qualified Data.Text as Text
@@ -40,6 +41,7 @@ test_Parse = suite "parse"
 	, test_ParseUnexpectedTerminator
 	, test_ParseUnterminatedBlock
 	, test_ParseInvalidContent
+	, test_ParseIndentedMacro
 	]
 
 test_ParseFull :: Suite
@@ -150,6 +152,32 @@ test_ParseInvalidContent = assertions "invalid-content" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
 		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
+
+test_ParseIndentedMacro :: Suite
+test_ParseIndentedMacro = assertions "indented-macro" $ do
+	$expect $ equal
+		(runParse "test.in" [("test.in", ByteString.unlines
+			[ ":d macro-foo"
+			, "foo"
+			, ":"
+			, ":f foo.hs"
+			, "  |foo|"
+			, "\t|foo|"
+			, ":"
+			])])
+		(Right (Document
+			{ documentOptions = Map.empty
+			, documentBlocks =
+				[ BlockDefine "macro-foo"
+					[ ContentText (Position "test.in" 2) "foo"
+					]
+				,BlockFile "foo.hs"
+					[ ContentMacro (Position "test.in" 5) "  " "foo"
+					, ContentMacro (Position "test.in" 6) "\t" "foo"
+					]
+				]
+			, documentLoomName = Nothing
+			}))
 
 runParse :: FilePath -> [(FilePath, ByteString)] -> Either ParseError Document
 runParse root files = runIdentity (parse getFile root) where
