@@ -50,6 +50,7 @@ data Command
 	| CommandFile Text
 	| CommandDefine Text
 	| CommandOption Text Text
+	| CommandLoom Text
 	| CommandColon
 	| CommandEndBlock
 	| CommandComment
@@ -85,24 +86,25 @@ getLines path bytes = do
 			in throwError (ParseError (Position path 0) msg)
 
 parseDocument :: Monad m => [Line] -> ErrorT ParseError m Document
-parseDocument = loop (Seq.empty, Map.empty) where
-	loop (blocks, opts) [] = return (Document (toList blocks) opts)
+parseDocument = loop (Seq.empty, Map.empty, Nothing) where
+	loop (blocks, opts, loom) [] = return (Document (toList blocks) opts loom)
 	loop acc (line:lines) = do
 		(acc', lines') <- step acc line lines
 		loop acc' lines'
 	
-	step (bs, opts) line lines = case line of
-		LineText _ text -> return ((bs |> BlockText text, opts), lines)
+	step (bs, opts, loom) line lines = case line of
+		LineText _ text -> return ((bs |> BlockText text, opts, loom), lines)
 		LineCommand pos cmd -> case cmd of
 			CommandFile path -> do
 				(block, lines') <- parseContent pos (BlockFile path) lines
-				return ((bs |> block, opts), lines')
+				return ((bs |> block, opts, loom), lines')
 			CommandDefine name -> do
 				(block, lines') <- parseContent pos (BlockDefine name) lines
-				return ((bs |> block, opts), lines')
-			CommandOption key value -> return ((bs, Map.insert key value opts), lines)
-			CommandColon -> return ((bs |> BlockText ":", opts), lines)
-			CommandComment -> return ((bs, opts), lines)
+				return ((bs |> block, opts, loom), lines')
+			CommandOption key value -> return ((bs, Map.insert key value opts, loom), lines)
+			CommandColon -> return ((bs |> BlockText ":", opts, loom), lines)
+			CommandComment -> return ((bs, opts, loom), lines)
+			CommandLoom loomName -> return ((bs, opts, Just loomName), lines)
 			CommandEndBlock -> let
 				msg = "Unexpected block terminator"
 				in throwError (ParseError pos msg)
@@ -146,7 +148,7 @@ parseLine = command <|> text where
 parseCommand :: Monad m => ParserM m Command
 parseCommand = parsed where
 	string = P.try . P.string
-	parsed = P.choice [file, include, define, option, colon, comment, endBlock]
+	parsed = P.choice [file, include, define, option, loom, colon, comment, endBlock]
 	file = do
 		void (string "file " <|> string "f ")
 		CommandFile <$> untilChar '\n'
@@ -179,6 +181,10 @@ parseCommand = parsed where
 					(pos { positionLine = positionLine pos - 1})
 					(Data.Text.pack ("Invalid option: " ++ show badLine))
 			Right (key, value) -> return (CommandOption key value)
+	
+	loom = do
+		void (string "loom ")
+		CommandLoom <$> untilChar '\n'
 	
 	colon = do
 		void (P.char ':')

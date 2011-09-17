@@ -75,6 +75,14 @@ test_Parse = test $ assertions "parse" $ do
 					[ ContentText (Position "./data/test-2.in" 2) "foo"
 					]
 				]
+			, documentLoomName = Nothing
+			}))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":loom anansi.latex\n")])
+		(Right (Document
+			{ documentOptions = Map.empty
+			, documentBlocks = []
+			, documentLoomName = Just "anansi.latex"
 			}))
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":bad\n")])
@@ -91,6 +99,9 @@ test_Parse = test $ assertions "parse" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n:#\n")])
 		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
+		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
 		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
@@ -334,6 +345,7 @@ equalWeave loom opts blocks = equalLines (weave loom doc) where
 	doc = Document
 		{ documentBlocks = blocks
 		, documentOptions = opts
+		, documentLoomName = Nothing
 		}
 
 test_ParseLoomOptions :: Suite

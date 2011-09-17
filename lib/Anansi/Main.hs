@@ -39,7 +39,6 @@ import           System.Environment
 import           System.Exit
 import           System.IO hiding (withFile, FilePath)
 
-import           Anansi.Loom.LaTeX
 import           Anansi.Parser
 import           Anansi.Tangle
 import           Anansi.Types
@@ -94,13 +93,11 @@ withFile path io = if FP.null path
 	then io stdout
 	else Filesystem.withFile path WriteMode io
 
-getLoom :: Data.Map.Map Text Loom -> [Option] -> Loom
-getLoom looms = loop where
-	loop [] = loomLaTeX
+getLoomName :: [Option] -> Maybe Text
+getLoomName = loop where
+	loop [] = Nothing
 	loop (x:xs) = case x of
-		OptionLoom name -> case Data.Map.lookup name looms of
-			Just loom -> loom
-			Nothing -> error ("Unknown loom: " ++ show name)
+		OptionLoom name -> Just name
 		_ -> loop xs
 
 getEnableLines :: [Option] -> Bool
@@ -138,7 +135,6 @@ defaultMain looms = do
 			exitFailure
 	
 	let path = getPath options
-	let loom = getLoom looms options
 	let enableLines = getEnableLines options
 	
 	parsedDoc <- parse Filesystem.readFile input
@@ -152,7 +148,22 @@ defaultMain looms = do
 		Tangle -> case path of
 			"" -> tangle debugTangle enableLines (documentBlocks doc)
 			_ -> tangle (realTangle path) enableLines (documentBlocks doc)
-		Weave -> withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 (weave loom doc)))
+		Weave -> do
+			loomName <- case getLoomName options of
+				Just name -> return name
+				Nothing -> case documentLoomName doc of
+					Just name -> return name
+					Nothing -> do
+						hPutStrLn stderr "No loom specified (use :loom or --loom)."
+						exitFailure
+			
+			loom <- case Data.Map.lookup loomName looms of
+				Just loom -> return loom
+				Nothing -> do
+					hPutStrLn stderr ("Loom " ++ show loomName ++ " not recognized.")
+					exitFailure
+			
+			withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 (weave loom doc)))
 
 debugTangle :: FilePath -> Text -> IO ()
 debugTangle path text = do

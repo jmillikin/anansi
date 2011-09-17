@@ -27,6 +27,7 @@ module Anansi
 	, Document
 	, documentBlocks
 	, documentOptions
+	, documentLoomName
 	, Block (..)
 	, Content (..)
 	
@@ -66,8 +67,8 @@ import           Anansi.Types
 
 defaultLooms :: Map Text Loom
 defaultLooms = fromList
-	[ ("debug", loomDebug)
-	, ("html", loomHTML)
-	, ("latex", loomLaTeX)
-	, ("latex-noweb", loomNoWeb)
+	[ ("anansi.debug", loomDebug)
+	, ("anansi.html", loomHTML)
+	, ("anansi.latex", loomLaTeX)
+	, ("anansi.noweb", loomNoWeb)
 	]

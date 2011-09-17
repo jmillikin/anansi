@@ -66,6 +66,7 @@ data ParseError = ParseError
 data Document = Document
 	{ documentBlocks :: [Block]
 	, documentOptions :: Map Text Text
+	, documentLoomName :: Maybe Text
 	}
 	deriving (Eq, Show)
 
