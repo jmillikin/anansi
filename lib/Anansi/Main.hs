@@ -132,6 +132,7 @@ defaultMain looms = do
 	parsedDoc <- parse Filesystem.readFile input
 	doc <- case parsedDoc of
 		Left err -> do
+			hPutStrLn stderr ("Parse error while processing document " ++ show input)
 			hPutStrLn stderr (formatError err)
 			exitFailure
 		Right x -> return x
@@ -190,7 +191,7 @@ fileContentsEqual h bytes = do
 			return (bytes == contents)
 
 formatError :: ParseError -> String
-formatError err = concat [filename, ":", line, ": error: ", message] where
+formatError err = concat [filename, ":", line, ": ", message] where
 	pos = parseErrorPosition err
 	filename = either Data.Text.unpack Data.Text.unpack (FP.toText (positionFile pos))
 	line = show (positionLine pos)
