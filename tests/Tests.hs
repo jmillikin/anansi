@@ -43,7 +43,7 @@ test_Parse = suite "parse"
 	]
 
 test_ParseFull :: Suite
-test_ParseFull = test $ assertions "full" $ do
+test_ParseFull = assertions "full" $ do
 	let bytes =
 		"hello\n\
 		\:o opt-1 foo\n\
@@ -86,7 +86,7 @@ test_ParseFull = test $ assertions "full" $ do
 	$expect (equal (documentLoomName doc) Nothing)
 
 test_ParseInclude :: Suite
-test_ParseInclude = test $ assertions "include" $ do
+test_ParseInclude = assertions "include" $ do
 	$expect $ equal
 		(runParse "data/test-1.in"
 			[ ("data/test-1.in", ":i test-2.in\n")
@@ -103,7 +103,7 @@ test_ParseInclude = test $ assertions "include" $ do
 			}))
 
 test_ParseLoom :: Suite
-test_ParseLoom = test $ assertions "loom" $ do
+test_ParseLoom = assertions "loom" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":loom anansi.latex\n")])
 		(Right (Document
@@ -113,25 +113,25 @@ test_ParseLoom = test $ assertions "loom" $ do
 			}))
 
 test_ParseUnknownCommand :: Suite
-test_ParseUnknownCommand = test $ assertions "unknown-command" $ do
+test_ParseUnknownCommand = assertions "unknown-command" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":bad\n")])
 		(Left (ParseError (Position "test.in" 1) "unknown command: \":bad\""))
 
 test_ParseInvalidOption :: Suite
-test_ParseInvalidOption = test $ assertions "invalid-option" $ do
+test_ParseInvalidOption = assertions "invalid-option" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":o foo=bar\nbaz")])
 		(Left (ParseError (Position "test.in" 1) "Invalid option: \"foo=bar\""))
 
 test_ParseUnexpectedTerminator :: Suite
-test_ParseUnexpectedTerminator = test $ assertions "unexpected-terminator" $ do
+test_ParseUnexpectedTerminator = assertions "unexpected-terminator" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":\n")])
 		(Left (ParseError (Position "test.in" 1) "Unexpected block terminator"))
 
 test_ParseUnterminatedBlock :: Suite
-test_ParseUnterminatedBlock = test $ assertions "unterminated-block" $ do
+test_ParseUnterminatedBlock = assertions "unterminated-block" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n")])
 		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
@@ -143,7 +143,7 @@ test_ParseUnterminatedBlock = test $ assertions "unterminated-block" $ do
 		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
 
 test_ParseInvalidContent :: Suite
-test_ParseInvalidContent = test $ assertions "invalid-content" $ do
+test_ParseInvalidContent = assertions "invalid-content" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
 		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
@@ -157,7 +157,7 @@ runParse root files = runIdentity (parse getFile root) where
 		Just bytes = lookup p files
 
 test_Tangle :: Suite
-test_Tangle = test $ assertions "tangle" $ do
+test_Tangle = assertions "tangle" $ do
 	let blocks =
 		[ BlockText "foo\n"
 		, BlockFile "file-1.hs" []
@@ -255,7 +255,7 @@ test_Weave = suite "weave"
 	]
 
 test_WeaveDebug :: Suite
-test_WeaveDebug = test $ assertions "debug" $ do
+test_WeaveDebug = assertions "debug" $ do
 	$expect $ equalWeave loomDebug Map.empty
 		[]
 		"\n\
@@ -285,7 +285,7 @@ test_WeaveDebug = test $ assertions "debug" $ do
 		  \ \"  \" \"bar\"]\n"
 
 test_WeaveHtml :: Suite
-test_WeaveHtml = test $ assertions "html" $ do
+test_WeaveHtml = assertions "html" $ do
 	$expect $ equalWeave loomHTML Map.empty
 		[]
 		""
@@ -312,7 +312,7 @@ test_WeaveHtml = test $ assertions "html" $ do
 		\</pre>\n"
 
 test_WeaveLatex :: Suite
-test_WeaveLatex = test $ assertions "latex" $ do
+test_WeaveLatex = assertions "latex" $ do
 	$expect $ equalWeave loomLaTeX Map.empty
 		[]
 		""
@@ -345,7 +345,7 @@ test_WeaveLatex = test $ assertions "latex" $ do
 
 
 test_WeaveNoweb :: Suite
-test_WeaveNoweb = test $ assertions "noweb" $ do
+test_WeaveNoweb = assertions "noweb" $ do
 	$expect $ equalWeave loomNoWeb Map.empty
 		[]
 		""
@@ -385,7 +385,7 @@ equalWeave loom opts blocks = equalLines (weave loom doc) where
 		}
 
 test_ParseLoomOptions :: Suite
-test_ParseLoomOptions = test $ assertions "parseLoomOptions" $ do
+test_ParseLoomOptions = assertions "parseLoomOptions" $ do
 	$expect $ equal
 		(parseLoomOptions Map.empty)
 		(LoomOptions
