@@ -163,11 +163,10 @@ parseCommand = parsed where
 		CommandDefine <$> untilChar '\n'
 	
 	option = do
-		void (string "option " <|> string "o ")
+		void (string "option ")
 		eitherOption <- let
 			valid = P.try $ do
-				key <- P.manyTill (P.satisfy (/= '\n')) (P.try (P.satisfy isSpace))
-				P.skipMany (P.satisfy isSpace)
+				key <- P.manyTill (P.satisfy (/= '\n')) (P.try (P.char '='))
 				value <- untilChar '\n'
 				return (Right (Data.Text.pack key, value))
 			invalid = do

@@ -46,8 +46,8 @@ test_ParseFull :: Suite
 test_ParseFull = assertions "full" $ do
 	let bytes =
 		"hello\n\
-		\:o opt-1 foo\n\
-		\:o opt-2\tbar\n\
+		\:option opt-1=foo\n\
+		\:option opt-2=bar\n\
 		\:#a comment\n\
 		\::blue\n\
 		\world\n\
@@ -121,8 +121,8 @@ test_ParseUnknownCommand = assertions "unknown-command" $ do
 test_ParseInvalidOption :: Suite
 test_ParseInvalidOption = assertions "invalid-option" $ do
 	$expect $ equal
-		(runParse "test.in" [("test.in", ":o foo=bar\nbaz")])
-		(Left (ParseError (Position "test.in" 1) "Invalid option: \"foo=bar\""))
+		(runParse "test.in" [("test.in", ":option foo bar\nbaz")])
+		(Left (ParseError (Position "test.in" 1) "Invalid option: \"foo bar\""))
 
 test_ParseUnexpectedTerminator :: Suite
 test_ParseUnexpectedTerminator = assertions "unexpected-terminator" $ do
