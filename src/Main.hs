@@ -18,4 +18,4 @@ module Main (main) where
 import           Anansi
 
 main :: IO ()
-main = defaultMain defaultLooms
+main = defaultMain looms
