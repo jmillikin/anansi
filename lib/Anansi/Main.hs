@@ -98,12 +98,6 @@ getLoomName = loop where
 		OptionLoom name -> Just name
 		_ -> loop xs
 
-getEnableLines :: [Option] -> Bool
-getEnableLines [] = True
-getEnableLines (x:xs) = case x of
-	OptionNoLines -> False
-	_ -> getEnableLines xs
-
 defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
 	args <- getArgs
@@ -133,7 +127,7 @@ defaultMain looms = do
 			exitFailure
 	
 	let path = getPath options
-	let enableLines = getEnableLines options
+	let enableLines = not (OptionNoLines `elem` options)
 	
 	parsedDoc <- parse Filesystem.readFile input
 	doc <- case parsedDoc of
