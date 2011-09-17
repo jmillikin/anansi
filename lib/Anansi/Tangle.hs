@@ -22,10 +22,12 @@ import           Prelude hiding (FilePath)
 import qualified Control.Monad.State as S
 import           Control.Monad.Trans (lift)
 import qualified Control.Monad.Writer as W
-import           Data.Map (Map)
+import qualified Data.ByteString.Char8 as ByteString
+import           Data.ByteString.Char8 (ByteString)
 import qualified Data.Map
+import           Data.Map (Map)
 import           Data.Text (Text)
-import qualified Data.Text
+import           Data.Text.Encoding (encodeUtf8)
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as FP
 
@@ -33,8 +35,8 @@ import           Anansi.Types
 
 type ContentMap = Map Text [Content]
 
-data TangleState = TangleState Position Text ContentMap
-type TangleT m a = W.WriterT Text (S.StateT TangleState m) a
+data TangleState = TangleState Position ByteString ContentMap
+type TangleT m a = W.WriterT ByteString (S.StateT TangleState m) a
 
 buildMacros :: [Block] -> ContentMap
 buildMacros blocks = S.execState (mapM_ accumMacro blocks) Data.Map.empty
@@ -60,7 +62,7 @@ accumFile b = case b of
 		S.put (Data.Map.insertWith accum name content files)
 
 tangle :: Monad m
-       => (FilePath -> Text -> m ())
+       => (FilePath -> ByteString -> m ())
        -> Bool -- ^ Enable writing #line declarations
        -> [Block]
        -> m ()
@@ -71,21 +73,21 @@ tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initSta
 	files = Data.Map.toAscList fileMap
 	
 	putFile (path, content) = do
-		text <- W.execWriterT (mapM_ (putContent enableLine) content)
-		lift (writeFile' (FP.fromText path) text)
+		bytes <- W.execWriterT (mapM_ (putContent enableLine) content)
+		lift (writeFile' (FP.fromText path) bytes)
 
 putContent :: Monad m => Bool -> Content -> TangleT m ()
 putContent enableLine (ContentText pos t) = do
 	TangleState _ indent _ <- S.get
 	putPosition enableLine pos
 	W.tell indent
-	W.tell t
+	W.tell (encodeUtf8 t)
 	W.tell "\n"
 
 putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
 		TangleState lastPos old macros <- S.get
-		S.put (TangleState lastPos (Data.Text.append old indent) macros)
+		S.put (TangleState lastPos (ByteString.append old (encodeUtf8 indent)) macros)
 		_ <- m
 		TangleState newPos _ _ <- S.get
 		S.put (TangleState newPos old macros)
@@ -104,7 +106,7 @@ putPosition enableLine pos = do
 	S.put (TangleState pos indent macros)
 	if pos == expectedPos
 		then return ()
-		else W.tell (Data.Text.pack line)
+		else W.tell (ByteString.pack line)
 
 lookupMacro :: Monad m => Text -> TangleT m [Content]
 lookupMacro name = do

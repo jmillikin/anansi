@@ -20,16 +20,18 @@ module Anansi.Loom.NoWeb (loomNoWeb) where
 import           Control.Monad (forM_)
 import           Control.Monad.Reader (asks)
 import           Control.Monad.Writer (tell)
+import           Data.ByteString (ByteString)
 import           Data.Monoid (mconcat)
-import           Data.Text (Text)
 import qualified Data.Text
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
 loomNoWeb :: Loom
 loomNoWeb = Loom (mapM_ putBlock . documentBlocks) where
 	putBlock b = case b of
-		BlockText text -> tell text
+		BlockText text -> tell (encodeUtf8 text)
 		BlockFile path content -> do
 			tell "\\nwbegincode{0}\\moddef{"
 			tell =<< escapeText path
@@ -55,11 +57,11 @@ loomNoWeb = Loom (mapM_ putBlock . documentBlocks) where
 		escName <- escapeText name
 		return (mconcat [escIndent, "\\LA{}", escName, "\\RA{}\n"])
 
-escapeCode :: Text -> LoomM Text
+escapeCode :: Text -> LoomM ByteString
 escapeCode text = do
 	tabSize <- asks loomOptionTabSize
 	
-	return $ Data.Text.concatMap (\c -> case c of
+	return $ encodeUtf8 $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\\\"
 		'{' -> "\\{"
@@ -67,11 +69,11 @@ escapeCode text = do
 		'_' -> "\\_"
 		_ -> Data.Text.singleton c) text
 
-escapeText :: Text -> LoomM Text
+escapeText :: Text -> LoomM ByteString
 escapeText text = do
 	tabSize <- asks loomOptionTabSize
 	
-	return $ Data.Text.concatMap (\c -> case c of
+	return $ encodeUtf8 $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\\\"
 		'{' -> "\\{"

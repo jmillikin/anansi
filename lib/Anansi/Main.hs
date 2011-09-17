@@ -28,8 +28,6 @@ import qualified Data.Map
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text
-import qualified Data.Text.IO
-import           Data.Text.Encoding (encodeUtf8)
 import           Data.Version (showVersion)
 import qualified Filesystem
 import           Filesystem.Path (FilePath)
@@ -163,21 +161,20 @@ defaultMain looms = do
 					hPutStrLn stderr ("Loom " ++ show loomName ++ " not recognized.")
 					exitFailure
 			
-			withFile path (\h -> Data.ByteString.hPut h (encodeUtf8 (weave loom doc)))
+			withFile path (\h -> Data.ByteString.hPut h (weave loom doc))
 
-debugTangle :: FilePath -> Text -> IO ()
-debugTangle path text = do
+debugTangle :: FilePath -> ByteString -> IO ()
+debugTangle path bytes = do
 	let strPath = either Data.Text.unpack Data.Text.unpack (FP.toText path)
 	putStr "\n"
 	putStrLn strPath
 	putStrLn (replicate (fromIntegral (length strPath)) '=')
-	Data.Text.IO.putStr text
+	Data.ByteString.putStr bytes
 
-realTangle :: FilePath -> FilePath -> Text -> IO ()
-realTangle root path text = do
+realTangle :: FilePath -> FilePath -> ByteString -> IO ()
+realTangle root path bytes = do
 	let fullpath = FP.append root path
 	Filesystem.createTree (FP.parent fullpath)
-	let bytes = encodeUtf8 text
 	Filesystem.withFile fullpath ReadWriteMode $ \h -> do
 		equal <- fileContentsEqual h bytes
 		unless equal $ do

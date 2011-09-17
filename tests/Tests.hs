@@ -231,14 +231,14 @@ test_Tangle = assertions "tangle" $ do
 		\\n\
 		\  macro-3\n"
 
-equalTangle :: Bool -> [Block] -> Text -> Text -> Assertion
+equalTangle :: Bool -> [Block] -> Text -> ByteString -> Assertion
 equalTangle enableLinePragma blocks filename expected = equalLines
 	expected
 	(case Map.lookup filename (runTangle enableLinePragma blocks) of
 		Nothing -> ""
 		Just txt -> txt)
 
-runTangle :: Bool -> [Block] -> Map Text Text
+runTangle :: Bool -> [Block] -> Map Text ByteString
 runTangle enableLinePragma blocks = State.execState st Map.empty where
 	st = tangle putFile enableLinePragma blocks
 	putFile path txt = State.modify $ Map.insert
@@ -376,7 +376,7 @@ test_WeaveNoweb = assertions "noweb" $ do
 		\  \\LA{}bar\\RA{}\n\
 		\\\nwendcode{}\n"
 
-equalWeave :: Loom -> Map.Map Text Text -> [Block] -> Text -> Assertion
+equalWeave :: Loom -> Map.Map Text Text -> [Block] -> ByteString -> Assertion
 equalWeave loom opts blocks = equalLines (weave loom doc) where
 	doc = Document
 		{ documentBlocks = blocks

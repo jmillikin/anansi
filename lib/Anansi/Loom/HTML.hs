@@ -19,16 +19,18 @@ module Anansi.Loom.HTML (loomHTML) where
 
 import           Control.Monad (forM_)
 import           Control.Monad.Writer (tell)
+import           Data.ByteString (ByteString)
 import           Data.Monoid (mconcat)
-import           Data.Text (Text)
 import qualified Data.Text
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
 loomHTML :: Loom
 loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
 	putBlock b = case b of
-		BlockText text -> tell text
+		BlockText text -> tell (encodeUtf8 text)
 		BlockFile path content -> let
 			label = mconcat ["<b>&#xBB; ", escape path, "</b>"]
 			in putContent label content
@@ -47,14 +49,19 @@ loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
 			ContentMacro _ indent name -> tell (formatMacro indent name)
 		tell "</pre>"
 
-formatMacro :: Text -> Text -> Text
-formatMacro indent name = mconcat [indent, "<i>&#xAB;", escape name, "&#xBB;</i>\n"]
+formatMacro :: Text -> Text -> ByteString
+formatMacro indent name = mconcat
+	[ encodeUtf8 indent
+	, "<i>&#xAB;"
+	, escape name
+	, "&#xBB;</i>\n"
+	]
 
-escape :: Text -> Text
-escape = Data.Text.concatMap $ \c -> case c of
+escape :: Text -> ByteString
+escape txt = encodeUtf8 (Data.Text.concatMap (\c -> case c of
 	'&' -> "&amp;"
 	'<' -> "&lt;"
 	'>' -> "&gt;"
 	'"' -> "&quot;"
 	'\'' -> "&apos;"
-	_ -> Data.Text.singleton c
+	_ -> Data.Text.singleton c) txt)

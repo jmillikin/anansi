@@ -20,16 +20,18 @@ module Anansi.Loom.LaTeX (loomLaTeX) where
 import           Control.Monad (forM_)
 import           Control.Monad.Reader (asks)
 import           Control.Monad.Writer (tell)
+import           Data.ByteString (ByteString)
 import           Data.Monoid (mconcat)
-import           Data.Text (Text)
 import qualified Data.Text
+import           Data.Text (Text)
+import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
 loomLaTeX :: Loom
 loomLaTeX = Loom (mapM_ putBlock . documentBlocks) where
 	putBlock b = case b of
-		BlockText text -> tell text
+		BlockText text -> tell (encodeUtf8 text)
 		BlockFile path content -> do
 			tell "\\begin{alltt}\n"
 			tell "{\\bf\\(\\gg\\) "
@@ -57,11 +59,11 @@ loomLaTeX = Loom (mapM_ putBlock . documentBlocks) where
 		escName <- escape name
 		return (mconcat [escIndent, "|\\emph{", escName, "}|\n"])
 
-escape ::  Text -> LoomM Text
+escape ::  Text -> LoomM ByteString
 escape text = do
 	tabSize <- asks loomOptionTabSize
 	
-	return $ Data.Text.concatMap (\c -> case c of
+	return $ encodeUtf8 $ Data.Text.concatMap (\c -> case c of
 		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
 		'\\' -> "\\textbackslash{}"
 		'{' -> "\\{"

@@ -19,7 +19,7 @@ module Anansi.Loom.Debug (loomDebug) where
 
 import           Control.Monad (forM_)
 import           Control.Monad.Writer (tell)
-import           Data.Text (pack)
+import           Data.ByteString.Char8 (pack)
 
 import           Anansi.Types
 

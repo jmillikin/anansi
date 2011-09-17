@@ -34,6 +34,7 @@ import           Prelude hiding (FilePath)
 
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Control.Monad.Writer (Writer, execWriter)
+import           Data.ByteString (ByteString)
 import qualified Data.Map
 import           Data.Map (Map)
 import qualified Data.Text
@@ -70,10 +71,10 @@ data Document = Document
 	}
 	deriving (Eq, Show)
 
-type LoomM = ReaderT LoomOptions (Writer Text)
-newtype Loom = Loom (Document -> ReaderT LoomOptions (Writer Text) ())
+type LoomM = ReaderT LoomOptions (Writer ByteString)
+newtype Loom = Loom (Document -> ReaderT LoomOptions (Writer ByteString) ())
 
-weave :: Loom -> Document -> Text
+weave :: Loom -> Document -> ByteString
 weave (Loom m) doc = execWriter (runReaderT
 	(m doc)
 	(parseLoomOptions (documentOptions doc)))
