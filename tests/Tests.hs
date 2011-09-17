@@ -31,8 +31,20 @@ tests =
 	]
 
 test_Parse :: Suite
-test_Parse = test $ assertions "parse" $ do
-	$expect $ equalParse "test"
+test_Parse = suite "parse"
+	[ test_ParseFull
+	, test_ParseInclude
+	, test_ParseLoom
+	, test_ParseUnknownCommand
+	, test_ParseInvalidOption
+	, test_ParseUnexpectedTerminator
+	, test_ParseUnterminatedBlock
+	, test_ParseInvalidContent
+	]
+
+test_ParseFull :: Suite
+test_ParseFull = test $ assertions "full" $ do
+	let bytes =
 		"hello\n\
 		\:o opt-1 foo\n\
 		\:o opt-2\tbar\n\
@@ -48,21 +60,33 @@ test_Parse = test $ assertions "parse" $ do
 		\:f test.hs\n\
 		\|macro|\n\
 		\:\n"
-		[("opt-1", "foo"), ("opt-2", "bar")]
+	let blocks =
 		[ BlockText "hello\n"
 		, BlockText ":"
 		, BlockText "blue\n"
 		, BlockText "world\n"
 		, BlockFile "test.hs"
-			[ ContentText (Position "test" 8) "foo"
+			[ ContentText (Position "test.in" 8) "foo"
 			]
 		, BlockDefine "macro"
-			[ ContentText (Position "test" 11) "bar"
+			[ ContentText (Position "test.in" 11) "bar"
 			]
 		, BlockFile "test.hs"
-			[ ContentMacro (Position "test" 14) "" "macro"
+			[ ContentMacro (Position "test.in" 14) "" "macro"
 			]
 		]
+	let options = Map.fromList [("opt-1", "foo"), ("opt-2", "bar")]
+	
+	let res = runParse "test.in" [("test.in", bytes)]
+	$assert (right res)
+	let Right doc = res
+	
+	$expect (equalItems (documentBlocks doc) blocks)
+	$expect (sameItems (documentOptions doc) options)
+	$expect (equal (documentLoomName doc) Nothing)
+
+test_ParseInclude :: Suite
+test_ParseInclude = test $ assertions "include" $ do
 	$expect $ equal
 		(runParse "data/test-1.in"
 			[ ("data/test-1.in", ":i test-2.in\n")
@@ -77,6 +101,9 @@ test_Parse = test $ assertions "parse" $ do
 				]
 			, documentLoomName = Nothing
 			}))
+
+test_ParseLoom :: Suite
+test_ParseLoom = test $ assertions "loom" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":loom anansi.latex\n")])
 		(Right (Document
@@ -84,21 +111,39 @@ test_Parse = test $ assertions "parse" $ do
 			, documentBlocks = []
 			, documentLoomName = Just "anansi.latex"
 			}))
+
+test_ParseUnknownCommand :: Suite
+test_ParseUnknownCommand = test $ assertions "unknown-command" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":bad\n")])
 		(Left (ParseError (Position "test.in" 1) "unknown command: \":bad\""))
+
+test_ParseInvalidOption :: Suite
+test_ParseInvalidOption = test $ assertions "invalid-option" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":o foo=bar\nbaz")])
 		(Left (ParseError (Position "test.in" 1) "Invalid option: \"foo=bar\""))
+
+test_ParseUnexpectedTerminator :: Suite
+test_ParseUnexpectedTerminator = test $ assertions "unexpected-terminator" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":\n")])
 		(Left (ParseError (Position "test.in" 1) "Unexpected block terminator"))
+
+test_ParseUnterminatedBlock :: Suite
+test_ParseUnterminatedBlock = test $ assertions "unterminated-block" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n")])
 		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
 	$expect $ equal
+		(runParse "test.in" [("test.in", ":d macro\n")])
+		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
+	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n:#\n")])
 		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
+
+test_ParseInvalidContent :: Suite
+test_ParseInvalidContent = test $ assertions "invalid-content" $ do
 	$expect $ equal
 		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
 		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
@@ -110,15 +155,6 @@ runParse :: FilePath -> [(FilePath, ByteString)] -> Either ParseError Document
 runParse root files = runIdentity (parse getFile root) where
 	getFile p = return bytes where
 		Just bytes = lookup p files
-
-equalParse :: FilePath -> ByteString -> [(Text, Text)] -> [Block] -> Assertion
-equalParse path bytes options blocks = case runParse path [(path, bytes)] of
-	Right doc ->
-		let docOptions = Map.toList (documentOptions doc) in
-		if docOptions == options
-			then equalItems blocks (documentBlocks doc)
-			else sameItems options docOptions
-	parsed -> right parsed
 
 test_Tangle :: Suite
 test_Tangle = test $ assertions "tangle" $ do
