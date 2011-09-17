@@ -87,12 +87,11 @@ getLines path bytes = do
 parseDocument :: Monad m => [Line] -> ErrorT ParseError m Document
 parseDocument = loop (Seq.empty, Map.empty) where
 	loop (blocks, opts) [] = return (Document (toList blocks) opts)
-	loop acc lines = do
-		(acc', lines') <- step acc lines
+	loop acc (line:lines) = do
+		(acc', lines') <- step acc line lines
 		loop acc' lines'
 	
-	step acc [] = return (acc, [])
-	step (bs, opts) (line:lines) = case line of
+	step (bs, opts) line lines = case line of
 		LineText _ text -> return ((bs |> BlockText text, opts), lines)
 		LineCommand pos cmd -> case cmd of
 			CommandFile path -> do
@@ -103,10 +102,12 @@ parseDocument = loop (Seq.empty, Map.empty) where
 				return ((bs |> block, opts), lines')
 			CommandOption key value -> return ((bs, Map.insert key value opts), lines)
 			CommandColon -> return ((bs |> BlockText ":", opts), lines)
-			CommandEndBlock -> return ((bs |> BlockText "\n", opts), lines)
-			CommandComment -> return ((bs |> BlockText "", opts), lines)
+			CommandComment -> return ((bs, opts), lines)
+			CommandEndBlock -> let
+				msg = "Unexpected block terminator"
+				in throwError (ParseError pos msg)
 			CommandInclude _ -> let
-				msg = "unexpected CommandInclude (internal error)"
+				msg = "Unexpected CommandInclude (internal error)"
 				in throwError (ParseError pos msg)
 
 type ParserM m = P.ParsecT String () (ErrorT ParseError m)
@@ -161,10 +162,23 @@ parseCommand = parsed where
 	
 	option = do
 		void (string "option " <|> string "o ")
-		key <- P.manyTill P.anyChar (P.try (P.satisfy isSpace))
-		P.skipMany (P.satisfy isSpace)
-		value <- untilChar '\n'
-		return (CommandOption (Data.Text.pack key) value)
+		eitherOption <- let
+			valid = P.try $ do
+				key <- P.manyTill (P.satisfy (/= '\n')) (P.try (P.satisfy isSpace))
+				P.skipMany (P.satisfy isSpace)
+				value <- untilChar '\n'
+				return (Right (Data.Text.pack key, value))
+			invalid = do
+				line <- untilChar '\n'
+				return (Left line)
+			in valid P.<|> invalid
+		case eitherOption of
+			Left badLine -> do
+				pos <- getPosition
+				parseError
+					(pos { positionLine = positionLine pos - 1})
+					(Data.Text.pack ("Invalid option: " ++ show badLine))
+			Right (key, value) -> return (CommandOption key value)
 	
 	colon = do
 		void (P.char ':')
@@ -182,7 +196,7 @@ parseCommand = parsed where
 			else do
 				pos <- getPosition
 				let msg = Data.Text.pack ("unknown command: " ++ show (Data.Text.append ":" line))
-				parseError pos msg
+				parseError (pos { positionLine = positionLine pos - 1 }) msg
 
 -- TODO: more unicode support
 isSpace :: Char -> Bool
@@ -192,23 +206,24 @@ isSpace _ = False
 
 parseContent :: Monad m => Position -> ([Content] -> Block) -> [Line] -> ErrorT ParseError m (Block, [Line])
 parseContent start block = loop [] where
-	loop acc [] = return (block (reverse acc), [])
+	loop _ [] = unterminated
 	loop acc (line:xs) = case line of
 		LineText pos text -> do
 			parsed <- parse' pos text
 			loop (parsed : acc) xs
 		LineCommand _ CommandEndBlock -> return (block (reverse acc), xs)
-		LineCommand _ _ -> let
-			msg = "Unterminated content block"
-			in throwError (ParseError start msg)
+		LineCommand _ _ -> unterminated
 	
 	parse' pos text = do
 		res <- P.runParserT (parser pos) () "" (Data.Text.unpack text)
 		case res of
 			Right content -> return content
-			Left err -> let
-				msg = Data.Text.pack ("Invalid content line " ++ show text ++ ": " ++ show err)
+			Left _ -> let
+				trimmed = Data.Text.dropWhileEnd (== '\n') text
+				msg = Data.Text.pack ("Invalid content line: " ++ show trimmed)
 				in throwError (ParseError pos msg)
+	
+	unterminated = throwError (ParseError start "Unterminated content block")
 	
 	parser pos = do
 		content <- contentMacro pos <|> contentText pos

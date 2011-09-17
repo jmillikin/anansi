@@ -3,12 +3,17 @@
 
 module Main (tests, main) where
 
+import           Prelude hiding (FilePath)
+
 import qualified Control.Monad.State as State
+import           Control.Monad.Identity (runIdentity)
+import           Data.ByteString (ByteString)
 import qualified Data.Map as Map
 import           Data.Map (Map)
 import qualified Data.Text as Text
 import           Data.Text (Text)
 
+import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.Rules as Path
 import           Test.Chell
 
@@ -20,14 +25,89 @@ main = Test.Chell.defaultMain tests
 
 tests :: [Suite]
 tests =
-	[ suite_Parse
+	[ test_Parse
 	, test_Tangle
 	, test_Weave
 	]
 
-suite_Parse :: Suite
-suite_Parse = suite "parse"
-	[]
+test_Parse :: Suite
+test_Parse = test $ assertions "parse" $ do
+	$expect $ equalParse "test"
+		"hello\n\
+		\:o opt-1 foo\n\
+		\:o opt-2\tbar\n\
+		\:#a comment\n\
+		\::blue\n\
+		\world\n\
+		\:f test.hs\n\
+		\foo\n\
+		\:\n\
+		\:d macro\n\
+		\bar\n\
+		\:\n\
+		\:f test.hs\n\
+		\|macro|\n\
+		\:\n"
+		[("opt-1", "foo"), ("opt-2", "bar")]
+		[ BlockText "hello\n"
+		, BlockText ":"
+		, BlockText "blue\n"
+		, BlockText "world\n"
+		, BlockFile "test.hs"
+			[ ContentText (Position "test" 8) "foo"
+			]
+		, BlockDefine "macro"
+			[ ContentText (Position "test" 11) "bar"
+			]
+		, BlockFile "test.hs"
+			[ ContentMacro (Position "test" 14) "" "macro"
+			]
+		]
+	$expect $ equal
+		(runParse "data/test-1.in"
+			[ ("data/test-1.in", ":i test-2.in\n")
+			, ("./data/test-2.in", ":d macro\nfoo\n:\n")
+			])
+		(Right (Document
+			{ documentOptions = Map.empty
+			, documentBlocks =
+				[ BlockDefine "macro"
+					[ ContentText (Position "./data/test-2.in" 2) "foo"
+					]
+				]
+			}))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":bad\n")])
+		(Left (ParseError (Position "test.in" 1) "unknown command: \":bad\""))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":o foo=bar\nbaz")])
+		(Left (ParseError (Position "test.in" 1) "Invalid option: \"foo=bar\""))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":\n")])
+		(Left (ParseError (Position "test.in" 1) "Unexpected block terminator"))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":f foo.hs\n")])
+		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":f foo.hs\n:#\n")])
+		(Left (ParseError (Position "test.in" 1) "Unterminated content block"))
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":f foo.hs\n|bad\n")])
+		(Left (ParseError (Position "test.in" 2) "Invalid content line: \"|bad\""))
+
+runParse :: FilePath -> [(FilePath, ByteString)] -> Either ParseError Document
+runParse root files = runIdentity (parse getFile root) where
+	getFile p = return bytes where
+		Just bytes = lookup p files
+
+equalParse :: FilePath -> ByteString -> [(Text, Text)] -> [Block] -> Assertion
+equalParse path bytes options blocks = case runParse path [(path, bytes)] of
+	Right doc ->
+		let docOptions = Map.toList (documentOptions doc) in
+		if docOptions == options
+			then equalItems blocks (documentBlocks doc)
+			else sameItems options docOptions
+	parsed -> right parsed
 
 test_Tangle :: Suite
 test_Tangle = test $ assertions "tangle" $ do

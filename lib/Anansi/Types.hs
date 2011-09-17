@@ -44,18 +44,18 @@ data Block
 	= BlockText Text
 	| BlockFile Text [Content]
 	| BlockDefine Text [Content]
-	deriving (Eq, Show)
+	deriving (Eq, Ord, Show)
 
 data Content
 	= ContentText Position Text
 	| ContentMacro Position Text Text
-	deriving (Eq, Show)
+	deriving (Eq, Ord, Show)
 
 data Position = Position
 	{ positionFile :: FilePath
 	, positionLine :: Integer
 	}
-	deriving (Eq, Show)
+	deriving (Eq, Ord, Show)
 
 data ParseError = ParseError
 	{ parseErrorPosition :: Position
@@ -80,6 +80,7 @@ weave (Loom m) doc = execWriter (runReaderT
 data LoomOptions = LoomOptions
 	{ loomOptionTabSize :: Integer
 	}
+	deriving (Eq, Show)
 
 parseLoomOptions :: Map Text Text -> LoomOptions
 parseLoomOptions opts = LoomOptions
