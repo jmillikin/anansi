@@ -25,8 +25,8 @@ module Anansi.Types
 	
 	, Loom (..)
 	, LoomM
-	, LoomOptions
-	, loomOptionTabSize
+	, LoomOptions (..)
+	, parseLoomOptions
 	, weave
 	) where
 

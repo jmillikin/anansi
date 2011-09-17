@@ -204,6 +204,7 @@ test_Weave = suite "weave"
 	, test_WeaveHtml
 	, test_WeaveLatex
 	, test_WeaveNoweb
+	, test_ParseLoomOptions
 	]
 
 test_WeaveDebug :: Suite
@@ -334,3 +335,16 @@ equalWeave loom opts blocks = equalLines (weave loom doc) where
 		{ documentBlocks = blocks
 		, documentOptions = opts
 		}
+
+test_ParseLoomOptions :: Suite
+test_ParseLoomOptions = test $ assertions "parseLoomOptions" $ do
+	$expect $ equal
+		(parseLoomOptions Map.empty)
+		(LoomOptions
+			{ loomOptionTabSize = 8
+			})
+	$expect $ equal
+		(parseLoomOptions (Map.fromList [("tab-size", "4")]))
+		(LoomOptions
+			{ loomOptionTabSize = 4
+			})
