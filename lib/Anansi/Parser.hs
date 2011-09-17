@@ -23,6 +23,7 @@ module Anansi.Parser
 import           Prelude hiding (FilePath, lines, readFile)
 
 import           Control.Applicative ((<|>), (<$>))
+import           Control.Monad (liftM)
 import           Control.Monad.Error (ErrorT, Error, runErrorT, throwError)
 import           Control.Monad.Trans (lift)
 import           Data.ByteString (ByteString)
@@ -38,7 +39,6 @@ import qualified Filesystem.Path.CurrentOS as Path
 import qualified Text.Parsec as P
 
 import           Anansi.Types
-import           Anansi.Util
 
 data Line
 	= LineCommand Position Command
@@ -243,3 +243,9 @@ parseContent start block = loop [] where
 	contentText pos = do
 		text <- untilChar '\n'
 		return (ContentText pos text)
+
+void :: Monad m => m a -> m ()
+void m = m >> return ()
+
+concatMapM :: Monad m => (a -> m [b]) -> [a] -> m [b]
+concatMapM f xs = liftM concat (mapM f xs)
