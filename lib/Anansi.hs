@@ -19,6 +19,7 @@ module Anansi
 	(
 	-- * Basic operations
 	  defaultMain
+	, parse
 	, tangle
 	, weave
 	
@@ -37,7 +38,6 @@ module Anansi
 	, ParseError
 	, parseErrorPosition
 	, parseErrorMessage
-	, parseFile
 	
 	-- * Looms
 	, Loom (..)

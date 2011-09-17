@@ -17,14 +17,15 @@
 
 module Anansi.Parser
 	( ParseError (..)
-	, parseFile
+	, parse
 	) where
 
-import           Prelude hiding (FilePath, lines)
+import           Prelude hiding (FilePath, lines, readFile)
 
 import           Control.Applicative ((<|>), (<$>))
 import           Control.Monad.Error (ErrorT, Error, runErrorT, throwError)
-import           Control.Monad.Trans (MonadIO, liftIO)
+import           Control.Monad.Trans (lift)
+import           Data.ByteString (ByteString)
 import           Data.Foldable (toList)
 import qualified Data.Map as Map
 import qualified Data.Sequence as Seq
@@ -32,7 +33,6 @@ import           Data.Sequence ((|>))
 import           Data.Text (Text)
 import qualified Data.Text
 import           Data.Text.Encoding (decodeUtf8)
-import qualified Filesystem
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as Path
 import qualified Text.Parsec as P
@@ -58,9 +58,15 @@ data Command
 -- | ignore me
 instance Error ParseError
 
-parseFile :: FilePath -> IO (Either ParseError Document)
-parseFile root = runErrorT (gen root >>= parseDocument) where
-	gen path = getLines path >>= concatMapM (resolveIncludes path)
+parse :: Monad m
+      => (FilePath -> m ByteString)
+      -> FilePath
+      -> m (Either ParseError Document)
+parse readFile root = runErrorT (gen root >>= parseDocument) where
+	gen path = do
+		bytes <- lift (readFile path)
+		lines <- getLines path bytes
+		concatMapM (resolveIncludes path) lines
 	
 	relative x y = Path.append (Path.parent x) (Path.fromText y)
 	
@@ -68,9 +74,8 @@ parseFile root = runErrorT (gen root >>= parseDocument) where
 		LineCommand _ (CommandInclude path) -> gen (relative parent path)
 		_ -> return [line]
 
-getLines :: MonadIO m => FilePath -> ErrorT ParseError m [Line]
-getLines path = do
-	bytes <- liftIO (Filesystem.readFile path)
+getLines :: Monad m => FilePath -> ByteString -> ErrorT ParseError m [Line]
+getLines path bytes = do
 	let contents = Data.Text.unpack (decodeUtf8 bytes)
 	parseResult <- P.runParserT parseLines () (Path.encodeString path) contents
 	case parseResult of
@@ -186,12 +191,12 @@ isSpace '\t' = True
 isSpace _ = False
 
 parseContent :: Monad m => Position -> ([Content] -> Block) -> [Line] -> ErrorT ParseError m (Block, [Line])
-parseContent start block = parse [] where
-	parse acc [] = return (block (reverse acc), [])
-	parse acc (line:xs) = case line of
+parseContent start block = loop [] where
+	loop acc [] = return (block (reverse acc), [])
+	loop acc (line:xs) = case line of
 		LineText pos text -> do
 			parsed <- parse' pos text
-			parse (parsed : acc) xs
+			loop (parsed : acc) xs
 		LineCommand _ CommandEndBlock -> return (block (reverse acc), xs)
 		LineCommand _ _ -> let
 			msg = "Unterminated content block"
@@ -223,4 +228,3 @@ parseContent start block = parse [] where
 	contentText pos = do
 		text <- untilChar '\n'
 		return (ContentText pos text)
-

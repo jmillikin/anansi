@@ -141,7 +141,7 @@ defaultMain looms = do
 	let loom = getLoom looms options
 	let enableLines = getEnableLines options
 	
-	parsedDoc <- parseFile input
+	parsedDoc <- parse Filesystem.readFile input
 	doc <- case parsedDoc of
 		Left err -> do
 			hPutStrLn stderr (formatError err)
