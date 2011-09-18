@@ -209,7 +209,6 @@ parseCommand = parsed where
 				let msg = Data.Text.pack ("unknown command: " ++ show (Data.Text.append ":" line))
 				parseError (pos { positionLine = positionLine pos - 1 }) msg
 
--- TODO: more unicode support
 isSpace :: Char -> Bool
 isSpace ' ' = True
 isSpace '\t' = True

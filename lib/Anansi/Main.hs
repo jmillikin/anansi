@@ -101,7 +101,6 @@ defaultMain looms = do
 	unless (null errors) (showUsage errors)
 	when (OptionHelp `elem` options) (showUsage [])
 	when (OptionVersion `elem` options) $ do
-		-- TODO
 		putStrLn ("anansi_" ++ showVersion version)
 		exitSuccess
 	when (OptionNumericVersion `elem` options) $ do
