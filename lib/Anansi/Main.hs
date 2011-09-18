@@ -32,9 +32,10 @@ import           Data.Version (showVersion)
 import qualified Filesystem
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as FP
+import           System.Argv0 (getArgv0)
 import           System.Console.GetOpt
-import           System.Environment
-import           System.Exit
+import           System.Environment (getArgs)
+import           System.Exit (exitFailure, exitSuccess)
 import           System.IO hiding (withFile, FilePath)
 
 import           Anansi.Parser
@@ -71,7 +72,8 @@ optionInfo =
 
 showUsage :: [String] -> IO a
 showUsage errors = do
-	name <- getProgName
+	argv0 <- getArgv0
+	let name = either Data.Text.unpack Data.Text.unpack (FP.toText argv0)
 	let info = usageInfo
 		("Usage: " ++ name ++ " [OPTION...] <tangle|weave> input-file\n")
 		optionInfo

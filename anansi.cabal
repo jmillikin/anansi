@@ -44,6 +44,7 @@ library
     , containers >= 0.1 && < 0.5
     , monads-tf >= 0.1 && < 0.2
     , parsec >= 3.0 && < 3.2
+    , system-argv0 >= 0.1 && < 0.2
     , system-filepath >= 0.3.1 && < 0.5
     , system-fileio >= 0.2.1 && < 0.4
     , text >= 0.7 && < 0.12
@@ -73,6 +74,7 @@ executable anansi
     , containers >= 0.1 && < 0.5
     , monads-tf >= 0.1 && < 0.2
     , parsec >= 3.0 && < 3.2
+    , system-argv0 >= 0.1 && < 0.2
     , system-filepath >= 0.3.1 && < 0.5
     , system-fileio >= 0.2.1 && < 0.4
     , text >= 0.7 && < 0.12
