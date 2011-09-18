@@ -159,8 +159,14 @@ parseCommand = parsed where
 	
 	define = do
 		void (string "define " <|> string "d ")
-		-- TODO: verify no '|' in name
-		CommandDefine <$> untilChar '\n'
+		name <- untilChar '\n'
+		if Data.Text.any (== '|') name
+			then do
+				pos <- getPosition
+				parseError
+					(pos { positionLine = positionLine pos - 1})
+					(Data.Text.pack ("Invalid macro name: " ++ show name))
+			else return (CommandDefine name)
 	
 	option = do
 		void (string "option ")

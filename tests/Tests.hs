@@ -42,6 +42,7 @@ test_Parse = suite "parse"
 	, test_ParseUnterminatedBlock
 	, test_ParseInvalidContent
 	, test_ParseIndentedMacro
+	, test_ParseInvalidMacroName
 	]
 
 test_ParseFull :: Suite
@@ -178,6 +179,12 @@ test_ParseIndentedMacro = assertions "indented-macro" $ do
 				]
 			, documentLoomName = Nothing
 			}))
+
+test_ParseInvalidMacroName :: Suite
+test_ParseInvalidMacroName = assertions "invalid-macro-name" $ do
+	$expect $ equal
+		(runParse "test.in" [("test.in", ":d foo|bar\n:\n")])
+		(Left (ParseError (Position "test.in" 1) "Invalid macro name: \"foo|bar\""))
 
 runParse :: FilePath -> [(FilePath, ByteString)] -> Either ParseError Document
 runParse root files = runIdentity (parse getFile root) where
