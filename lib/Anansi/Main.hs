@@ -43,88 +43,84 @@ import           Anansi.Types
 
 import           Paths_anansi (version)
 
-data Output = Tangle | Weave
+data Mode = Tangle | Weave
 	deriving (Eq)
 
 data Option
-	= OptionOutput Output
-	| OptionOutputPath FilePath
-	| OptionLoom Text
-	| OptionNoLines
+	= OptionHelp
 	| OptionVersion
-	| OptionHelp
+	| OptionNumericVersion
+	| OptionOutputPath FilePath
+	| OptionNoLines
 	deriving (Eq)
 
 optionInfo :: [OptDescr Option]
 optionInfo =
-	[ Option ['h'] ["help"] (NoArg OptionHelp) ""
-	, Option [] ["version"] (NoArg OptionVersion) ""
-	, Option ['t'] ["tangle"] (NoArg (OptionOutput Tangle))
-	  "Generate tangled source code (default)"
-	, Option ['w'] ["weave"] (NoArg (OptionOutput Weave))
-	  "Generate woven markup"
+	[ Option ['h'] ["help"] (NoArg OptionHelp)
+	  "Display this help, then exit."
+	, Option [] ["version"] (NoArg OptionVersion)
+	  "Display information about this program, then exit"
+	, Option [] ["numeric-version"] (NoArg OptionNumericVersion)
+	  "Display the numeric version of Anansi, then exit."
 	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . fromString) "PATH")
-	  "Output path (directory for tangle, file for weave)"
-	, Option ['l'] ["loom"] (ReqArg (OptionLoom . Data.Text.pack) "NAME")
-	  "Which loom should be used to weave output"
-	, Option [] ["noline"] (NoArg OptionNoLines)
-	  "Disable generating #line pragmas in tangled code"
+	  "Output path (a directory when tangling, a file when weaving)."
+	, Option [] ["disable-line-pragmas"] (NoArg OptionNoLines)
+	  "Disable generating #line pragmas in tangled code. This works\
+	  \ around a bug in Haddock."
 	]
 
-usage :: String -> String
-usage name = "Usage: " ++ name ++ " [OPTION...] <input file>"
-
-getOutput :: [Option] -> Output
-getOutput [] = Tangle
-getOutput (x:xs) = case x of
-	OptionOutput o -> o
-	_ -> getOutput xs
+showUsage :: [String] -> IO a
+showUsage errors = do
+	name <- getProgName
+	let info = usageInfo
+		("Usage: " ++ name ++ " [OPTION...] <tangle|weave> input-file\n")
+		optionInfo
+	if null errors
+		then do
+			putStrLn info
+			exitSuccess
+		else do
+			hPutStrLn stderr (concat errors)
+			hPutStrLn stderr info
+			exitFailure
 
 getPath :: [Option] -> FilePath
-getPath [] = ""
-getPath (x:xs) = case x of
-	OptionOutputPath p -> p
-	_ -> getPath xs
+getPath opts = case reverse [p | OptionOutputPath p <- opts] of
+	[] -> ""
+	(path:_) -> path
 
 withFile :: FilePath -> (Handle -> IO a) -> IO a
 withFile path io = if FP.null path
 	then io stdout
 	else Filesystem.withFile path WriteMode io
 
-getLoomName :: [Option] -> Maybe Text
-getLoomName = loop where
-	loop [] = Nothing
-	loop (x:xs) = case x of
-		OptionLoom name -> Just name
-		_ -> loop xs
-
 defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
 	args <- getArgs
 	let (options, inputs, errors) = getOpt Permute optionInfo args
-	unless (null errors) $ do
-		name <- getProgName
-		hPutStrLn stderr (concat errors)
-		hPutStrLn stderr (usageInfo (usage name) optionInfo)
-		exitFailure
-	
-	when (OptionHelp `elem` options) $ do
-		name <- getProgName
-		putStrLn (usageInfo (usage name) optionInfo)
-		exitSuccess
-		
+	unless (null errors) (showUsage errors)
+	when (OptionHelp `elem` options) (showUsage [])
 	when (OptionVersion `elem` options) $ do
+		-- TODO
 		putStrLn ("anansi_" ++ showVersion version)
 		exitSuccess
+	when (OptionNumericVersion `elem` options) $ do
+		putStrLn (showVersion version)
+		exitSuccess
 	
-	input <- case inputs of
-		[] -> do
-			hPutStrLn stderr "An input file is required."
-			exitFailure
-		[x] -> return (fromString x)
-		_ -> do
-			hPutStrLn stderr "More than one input file provided."
-			exitFailure
+	(mode, input) <- case inputs of
+		[] -> showUsage ["A mode (either 'tangle' or 'weave') is required.\n"]
+		[_] -> showUsage ["An input file is required.\n"]
+		[raw_mode, input] -> do
+			mode <- case raw_mode of
+				"tangle" -> return Tangle
+				"weave" -> return Weave
+				_ -> showUsage ["Unrecognized mode: " ++ show raw_mode ++ ".\n"]
+			return (mode, fromString input)
+		_ -> showUsage ["More than one input file provided.\n"]
+	
+	-- used for error messages
+	let inputName = either id id (FP.toText input)
 	
 	let path = getPath options
 	let enableLines = not (OptionNoLines `elem` options)
@@ -132,23 +128,21 @@ defaultMain looms = do
 	parsedDoc <- parse Filesystem.readFile input
 	doc <- case parsedDoc of
 		Left err -> do
-			hPutStrLn stderr ("Parse error while processing document " ++ show input)
+			hPutStrLn stderr ("Parse error while processing document " ++ show inputName)
 			hPutStrLn stderr (formatError err)
 			exitFailure
 		Right x -> return x
 	
-	case getOutput options of
+	case mode of
 		Tangle -> case path of
 			"" -> tangle debugTangle enableLines (documentBlocks doc)
 			_ -> tangle (realTangle path) enableLines (documentBlocks doc)
 		Weave -> do
-			loomName <- case getLoomName options of
+			loomName <- case documentLoomName doc of
 				Just name -> return name
-				Nothing -> case documentLoomName doc of
-					Just name -> return name
-					Nothing -> do
-						hPutStrLn stderr "No loom specified (use :loom or --loom)."
-						exitFailure
+				Nothing -> do
+					hPutStrLn stderr ("Document " ++ show inputName ++ " does't specify a loom (use :loom).")
+					exitFailure
 			
 			loom <- case Data.Map.lookup loomName looms of
 				Just loom -> return loom
