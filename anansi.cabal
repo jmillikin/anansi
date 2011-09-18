@@ -21,7 +21,7 @@ description:
   without having to enumerate each output.
   .
   This package is split into a library and an executable. The executable is
-  suitable for simple cases, such as generating basic HTML or NoWeb. The
+  suitable for simple cases, such as generating basic HTML or LaTeX. The
   library is useful for users who would like to write their own output formats
   (called &#x201C;looms&#x201D;).
 

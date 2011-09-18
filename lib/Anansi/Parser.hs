@@ -59,9 +59,11 @@ data Command
 -- | ignore me
 instance Error ParseError
 
+-- | Parse a set of files into a 'Document'. If a parse failure occurs, a
+-- 'ParseError' will be returned instead.
 parse :: Monad m
-      => (FilePath -> m ByteString)
-      -> FilePath
+      => (FilePath -> m ByteString) -- ^ File loader
+      -> FilePath -- ^ Path to the root file
       -> m (Either ParseError Document)
 parse readFile root = runErrorT (gen root >>= parseDocument) where
 	gen path = do

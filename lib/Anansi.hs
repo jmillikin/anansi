@@ -66,6 +66,16 @@ import           Anansi.Parser
 import           Anansi.Tangle
 import           Anansi.Types
 
+-- |
+--
+-- @
+-- looms = Data.Map.fromList
+--     [ (\"anansi.debug\", 'loomDebug')
+--     , (\"anansi.html\", 'loomHTML')
+--     , (\"anansi.latex\", 'loomLaTeX')
+--     , (\"anansi.noweb\", 'loomNoWeb')
+--     ]
+-- @
 looms :: Map Text Loom
 looms = fromList
 	[ ("anansi.debug", loomDebug)

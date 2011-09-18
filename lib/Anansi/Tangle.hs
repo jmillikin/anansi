@@ -61,8 +61,16 @@ accumFile b = case b of
 		files <- S.get
 		S.put (Data.Map.insertWith accum name content files)
 
+-- | Write a 'Document' to files. Paths passed to the file writer are pulled
+-- directly from the document, so if you need to process them further, that
+-- logic must be placed in the writer computation.
+--
+-- In most cases, users will want to write @#line@ pragmas to tangled source,
+-- so error messages will refer back to the original input files. Haddock does
+-- not handle these pragmas properly, so disable them when the tangled sources
+-- will be processed into API documentation.
 tangle :: Monad m
-       => (FilePath -> ByteString -> m ())
+       => (FilePath -> ByteString -> m ()) -- ^ File writer
        -> Bool -- ^ Enable writing #line declarations
        -> Document
        -> m ()

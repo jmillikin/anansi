@@ -23,6 +23,8 @@ import           Data.ByteString.Char8 (pack)
 
 import           Anansi.Types
 
+-- | Just 'show' each block. This is useful for seeing exactly what your
+-- document is being parsed to.
 loomDebug :: Loom
 loomDebug doc = do
 	tell "\nweaving\n"

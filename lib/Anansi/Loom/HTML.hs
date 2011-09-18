@@ -28,6 +28,9 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
+-- | Generate simple, @<pre>@-based HTML. Users who would like to weave
+-- specialized HTML to fit with their existing templates are encouraged to
+-- copy this loom and modify it as needed.
 loomHTML :: Loom
 loomHTML = mapM_ putBlock . documentBlocks where
 	putBlock b = case b of

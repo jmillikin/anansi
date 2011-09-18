@@ -28,6 +28,9 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
+-- | Generate LaTeX markup, emulating the behavior of NoWeb. This is useful
+-- for porting existing NoWeb-based projects to Anansi without having to
+-- rewrite the styling.
 loomNoWeb :: Loom
 loomNoWeb = mapM_ putBlock . documentBlocks where
 	putBlock b = case b of

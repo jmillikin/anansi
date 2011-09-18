@@ -28,6 +28,9 @@ import           Data.Text.Encoding (encodeUtf8)
 
 import           Anansi.Types
 
+-- | Generate simple, @alltt@-based LaTeX. Users who would like to weave
+-- specialized LaTeX to fit with their existing templates are encouraged to
+-- copy this loom and modify it as needed.
 loomLaTeX :: Loom
 loomLaTeX = mapM_ putBlock . documentBlocks where
 	putBlock b = case b of

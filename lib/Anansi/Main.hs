@@ -94,6 +94,10 @@ withFile path io = if FP.null path
 	then io stdout
 	else Filesystem.withFile path WriteMode io
 
+-- | Run Anansi with the provided looms. Loom names are namespaced by their
+-- package name, such as @\"anansi.noweb\"@ or @\"anansi-hscolour.html\"@.
+-- If your looms aren't available on Hackage, a Java-style name such as
+-- @\"com.mycompany.myformat\"@ is a good alternative.
 defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
 	args <- getArgs

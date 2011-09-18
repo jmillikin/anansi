@@ -53,6 +53,10 @@ data Block
 
 data Content
 	= ContentText Position Text
+	
+	-- | A macro reference within a content block. The first 'Text' is
+	-- any indentation found before the first @\'|\'@, and the second is
+	-- the name of the macro.
 	| ContentMacro Position Text Text
 	deriving (Eq, Ord, Show)
 
@@ -70,11 +74,25 @@ data ParseError = ParseError
 
 data Document = Document
 	{ documentBlocks :: [Block]
+	
+	-- | A map of @:option@ commands found in the document. If
+	-- the same option is specified multiple times, the most recent will
+	-- be used.
 	, documentOptions :: Map Text Text
+	
+	-- | The last @:loom@ command given, if any. A document does not
+	-- require a loom name if it's just going to be tangled, or will be
+	-- woven by the user calling 'weave'. Documents woven by
+	-- 'defaultMain' do require a loom name.
 	, documentLoomName :: Maybe Text
 	}
 	deriving (Eq, Show)
 
+-- | A loom contains all the logic required to convert a 'Document' into
+-- markup suitable for processing with an external documentation tool.
+--
+-- Within a loom, use 'Reader.ask' to retrieve the 'LoomOptions', and
+-- 'Writer.tell' to append data to the output.
 type Loom = Document -> LoomM ()
 newtype LoomM a = LoomM { unLoomM :: ReaderT LoomOptions (Writer ByteString) a }
 
@@ -98,11 +116,19 @@ instance Writer.MonadWriter LoomM where
 	listen (LoomM m) = LoomM (Writer.listen m)
 	pass m = LoomM (Writer.pass (unLoomM m))
 
+-- | Write a document to some sort of document markup. This will typically be
+-- rendered into documentation by external tools, such as LaTeX or a web
+-- browser.
+--
+-- This writes a 'ByteString' rather than 'Text' so that looms have full
+-- control over character encoding.
 weave :: Loom -> Document -> ByteString
 weave loom doc = execWriter (runReaderT
 	(unLoomM (loom doc))
 	(parseLoomOptions (documentOptions doc)))
 
+-- | A set of processed @:option@ commands related to looms. Looms are always
+-- free to check options manually, but this simplifies common cases.
 data LoomOptions = LoomOptions
 	{ loomOptionTabSize :: Integer
 	}
