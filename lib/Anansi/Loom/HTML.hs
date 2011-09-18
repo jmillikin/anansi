@@ -29,7 +29,7 @@ import           Data.Text.Encoding (encodeUtf8)
 import           Anansi.Types
 
 loomHTML :: Loom
-loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
+loomHTML = mapM_ putBlock . documentBlocks where
 	putBlock b = case b of
 		BlockText text -> tell (encodeUtf8 text)
 		BlockFile path content -> do

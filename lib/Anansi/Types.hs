@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 --
@@ -23,7 +24,7 @@ module Anansi.Types
 	
 	, Document (..)
 	
-	, Loom (..)
+	, Loom
 	, LoomM
 	, LoomOptions (..)
 	, parseLoomOptions
@@ -32,7 +33,10 @@ module Anansi.Types
 
 import           Prelude hiding (FilePath)
 
+import           Control.Monad (liftM)
+import qualified Control.Monad.Reader as Reader
 import           Control.Monad.Reader (ReaderT, runReaderT)
+import qualified Control.Monad.Writer as Writer
 import           Control.Monad.Writer (Writer, execWriter)
 import           Data.ByteString (ByteString)
 import qualified Data.Map
@@ -71,12 +75,32 @@ data Document = Document
 	}
 	deriving (Eq, Show)
 
-type LoomM = ReaderT LoomOptions (Writer ByteString)
-newtype Loom = Loom (Document -> ReaderT LoomOptions (Writer ByteString) ())
+type Loom = Document -> LoomM ()
+newtype LoomM a = LoomM { unLoomM :: ReaderT LoomOptions (Writer ByteString) a }
+
+instance Functor LoomM where
+	fmap = liftM
+
+instance Monad LoomM where
+	return = LoomM . return
+	(LoomM m) >>= f = LoomM $ do
+		x <- m
+		unLoomM (f x)
+
+instance Reader.MonadReader LoomM where
+	type Reader.EnvType LoomM = LoomOptions
+	ask = LoomM Reader.ask
+	local f (LoomM m) = LoomM (Reader.local f m)
+
+instance Writer.MonadWriter LoomM where
+	type Writer.WriterType LoomM = ByteString
+	tell = LoomM . Writer.tell
+	listen (LoomM m) = LoomM (Writer.listen m)
+	pass m = LoomM (Writer.pass (unLoomM m))
 
 weave :: Loom -> Document -> ByteString
-weave (Loom m) doc = execWriter (runReaderT
-	(m doc)
+weave loom doc = execWriter (runReaderT
+	(unLoomM (loom doc))
 	(parseLoomOptions (documentOptions doc)))
 
 data LoomOptions = LoomOptions

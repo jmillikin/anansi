@@ -24,7 +24,7 @@ import           Data.ByteString.Char8 (pack)
 import           Anansi.Types
 
 loomDebug :: Loom
-loomDebug = Loom $ \doc -> do
+loomDebug doc = do
 	tell "\nweaving\n"
 	tell "==========================\n"
 	forM_ (documentBlocks doc) $ \b -> do

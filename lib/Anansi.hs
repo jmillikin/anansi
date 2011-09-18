@@ -41,7 +41,8 @@ module Anansi
 	, parseErrorMessage
 	
 	-- * Looms
-	, Loom (..)
+	, Loom
+	, LoomM
 	, LoomOptions
 	, loomOptionTabSize
 	
