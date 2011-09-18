@@ -269,13 +269,14 @@ test_Tangle = assertions "tangle" $ do
 equalTangle :: Bool -> [Block] -> Text -> ByteString -> Assertion
 equalTangle enableLinePragma blocks filename expected = equalLines
 	expected
-	(case Map.lookup filename (runTangle enableLinePragma blocks) of
+	(let doc = Document blocks Map.empty Nothing in
+	(case Map.lookup filename (runTangle enableLinePragma doc) of
 		Nothing -> ""
-		Just txt -> txt)
+		Just txt -> txt))
 
-runTangle :: Bool -> [Block] -> Map Text ByteString
-runTangle enableLinePragma blocks = State.execState st Map.empty where
-	st = tangle putFile enableLinePragma blocks
+runTangle :: Bool -> Document -> Map Text ByteString
+runTangle enableLinePragma doc = State.execState st Map.empty where
+	st = tangle putFile enableLinePragma doc
 	putFile path txt = State.modify $ Map.insert
 		(Text.pack (Path.encodeString Path.posix path))
 		txt

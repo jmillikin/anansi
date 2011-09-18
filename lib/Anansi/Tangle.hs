@@ -64,9 +64,11 @@ accumFile b = case b of
 tangle :: Monad m
        => (FilePath -> ByteString -> m ())
        -> Bool -- ^ Enable writing #line declarations
-       -> [Block]
+       -> Document
        -> m ()
-tangle writeFile' enableLine blocks = S.evalStateT (mapM_ putFile files) initState where
+tangle writeFile' enableLine doc = S.evalStateT (mapM_ putFile files) initState where
+	blocks = documentBlocks doc
+	
 	initState = (TangleState (Position "" 0) "" macros)
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks

@@ -134,8 +134,8 @@ defaultMain looms = do
 	
 	case mode of
 		Tangle -> case path of
-			"" -> tangle debugTangle enableLines (documentBlocks doc)
-			_ -> tangle (realTangle path) enableLines (documentBlocks doc)
+			"" -> tangle debugTangle enableLines doc
+			_ -> tangle (realTangle path) enableLines doc
 		Weave -> do
 			loomName <- case documentLoomName doc of
 				Just name -> return name
