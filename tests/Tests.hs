@@ -333,7 +333,7 @@ test_WeaveHtml = assertions "html" $ do
 		"foo < & \" ' > bar\n\
 		\<pre><b>&#xBB; file-1.hs</b>\n\
 		\</pre><pre><b>&#xAB;macro &lt; &amp; &quot; &apos; &gt; 2&#xBB;</b>\n\
-		\\tfoo\n\
+		\        foo\n\
 		\</pre><pre><b>&#xBB; file-2.hs</b>\n\
 		\foo &lt; &amp; &quot; &apos; &gt; bar\n\
 		\  <i>&#xAB;bar&#xBB;</i>\n\

@@ -18,6 +18,7 @@
 module Anansi.Loom.HTML (loomHTML) where
 
 import           Control.Monad (forM_)
+import           Control.Monad.Reader (asks)
 import           Control.Monad.Writer (tell)
 import           Data.ByteString (ByteString)
 import           Data.Monoid (mconcat)
@@ -31,12 +32,14 @@ loomHTML :: Loom
 loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
 	putBlock b = case b of
 		BlockText text -> tell (encodeUtf8 text)
-		BlockFile path content -> let
-			label = mconcat ["<b>&#xBB; ", escape path, "</b>"]
-			in putContent label content
-		BlockDefine name content -> let
-			label = mconcat ["<b>&#xAB;", escape name, "&#xBB;</b>"]
-			in putContent label content
+		BlockFile path content -> do
+			epath <- escape path
+			let label = mconcat ["<b>&#xBB; ", epath, "</b>"]
+			putContent label content
+		BlockDefine name content -> do
+			ename <- escape name
+			let label = mconcat ["<b>&#xAB;", ename, "&#xBB;</b>"]
+			putContent label content
 	
 	putContent label cs = do
 		tell "<pre>"
@@ -44,24 +47,30 @@ loomHTML = Loom (\doc -> mapM_ putBlock (documentBlocks doc)) where
 		tell "\n"
 		forM_ cs $ \c -> case c of
 			ContentText _ text -> do
-				tell (escape text)
+				tell =<< escape text
 				tell "\n"
-			ContentMacro _ indent name -> tell (formatMacro indent name)
+			ContentMacro _ indent name -> tell =<< formatMacro indent name
 		tell "</pre>"
 
-formatMacro :: Text -> Text -> ByteString
-formatMacro indent name = mconcat
-	[ encodeUtf8 indent
-	, "<i>&#xAB;"
-	, escape name
-	, "&#xBB;</i>\n"
-	]
+formatMacro :: Text -> Text -> LoomM ByteString
+formatMacro indent name = do
+	ename <- escape name
+	return $ mconcat
+		[ encodeUtf8 indent
+		, "<i>&#xAB;"
+		, ename
+		, "&#xBB;</i>\n"
+		]
 
-escape :: Text -> ByteString
-escape txt = encodeUtf8 (Data.Text.concatMap (\c -> case c of
-	'&' -> "&amp;"
-	'<' -> "&lt;"
-	'>' -> "&gt;"
-	'"' -> "&quot;"
-	'\'' -> "&apos;"
-	_ -> Data.Text.singleton c) txt)
+escape :: Text -> LoomM ByteString
+escape txt = do
+	tabSize <- asks loomOptionTabSize
+	
+	return $ encodeUtf8 $ Data.Text.concatMap (\c -> case c of
+		'\t' -> Data.Text.replicate (fromInteger tabSize) " "
+		'&' -> "&amp;"
+		'<' -> "&lt;"
+		'>' -> "&gt;"
+		'"' -> "&quot;"
+		'\'' -> "&apos;"
+		_ -> Data.Text.singleton c) txt
