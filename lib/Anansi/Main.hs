@@ -24,7 +24,9 @@ import           Prelude hiding (FilePath)
 import           Control.Monad.Writer
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString
+import           Data.List (sortBy)
 import qualified Data.Map
+import           Data.Ord (comparing)
 import           Data.String (fromString)
 import           Data.Text (Text)
 import qualified Data.Text
@@ -33,7 +35,8 @@ import qualified Filesystem
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as FP
 import           System.Argv0 (getArgv0)
-import           System.Console.GetOpt
+import           System.Console.GetOpt hiding (usageInfo)
+import qualified System.Console.GetOpt as GetOpt
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure, exitSuccess)
 import           System.IO hiding (withFile, FilePath)
@@ -70,13 +73,14 @@ optionInfo =
 	  \ around a bug in Haddock."
 	]
 
-showUsage :: [String] -> IO a
-showUsage errors = do
+showUsage :: Data.Map.Map Text Loom -> [String] -> IO a
+showUsage looms errors = do
 	argv0 <- getArgv0
 	let name = either Data.Text.unpack Data.Text.unpack (FP.toText argv0)
-	let info = usageInfo
+	let usageInfo = GetOpt.usageInfo
 		("Usage: " ++ name ++ " [OPTION...] <tangle|weave> input-file\n")
 		optionInfo
+	let info = usageInfo ++ loomInfo looms
 	if null errors
 		then do
 			putStrLn info
@@ -85,6 +89,15 @@ showUsage errors = do
 			hPutStrLn stderr (concat errors)
 			hPutStrLn stderr info
 			exitFailure
+
+loomInfo :: Data.Map.Map Text Loom -> String
+loomInfo looms = unlines lines' where
+	loomNames = sortBy nameKey (Data.Map.keys looms)
+	lines' = ["", "Available looms are:"] ++ indent 2 loomNames
+	indent n = map (\x -> replicate n ' ' ++ Data.Text.unpack x)
+	
+	-- sort loom names so anansi-foo comes after anansi.bar
+	nameKey = comparing (Data.Text.split (== '.'))
 
 getPath :: [Option] -> FilePath
 getPath opts = case reverse [p | OptionOutputPath p <- opts] of
@@ -102,10 +115,12 @@ withFile path io = if FP.null path
 -- @\"com.mycompany.myformat\"@ is a good alternative.
 defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
+	let usageError = showUsage looms
+	
 	args <- getArgs
 	let (options, inputs, errors) = getOpt Permute optionInfo args
-	unless (null errors) (showUsage errors)
-	when (OptionHelp `elem` options) (showUsage [])
+	unless (null errors) (usageError errors)
+	when (OptionHelp `elem` options) (showUsage looms [])
 	when (OptionVersion `elem` options) $ do
 		putStrLn ("anansi_" ++ showVersion version)
 		exitSuccess
@@ -114,21 +129,21 @@ defaultMain looms = do
 		exitSuccess
 	
 	(mode, input) <- case inputs of
-		[] -> showUsage ["A mode (either 'tangle' or 'weave') is required.\n"]
-		[_] -> showUsage ["An input file is required.\n"]
+		[] -> usageError ["A mode (either 'tangle' or 'weave') is required.\n"]
+		[_] -> usageError ["An input file is required.\n"]
 		[raw_mode, input] -> do
 			mode <- case raw_mode of
 				"tangle" -> return Tangle
 				"weave" -> return Weave
-				_ -> showUsage ["Unrecognized mode: " ++ show raw_mode ++ ".\n"]
+				_ -> usageError ["Unrecognized mode: " ++ show raw_mode ++ ".\n"]
 			return (mode, fromString input)
-		_ -> showUsage ["More than one input file provided.\n"]
+		_ -> usageError ["More than one input file provided.\n"]
 	
 	-- used for error messages
 	let inputName = either id id (FP.toText input)
 	
 	let path = getPath options
-	let enableLines = not (OptionNoLines `elem` options)
+	let enableLines = OptionNoLines `notElem` options
 	
 	parsedDoc <- parse Filesystem.readFile input
 	doc <- case parsedDoc of
@@ -146,13 +161,19 @@ defaultMain looms = do
 			loomName <- case documentLoomName doc of
 				Just name -> return name
 				Nothing -> do
-					hPutStrLn stderr ("Document " ++ show inputName ++ " does't specify a loom (use :loom).")
+					hPutStrLn stderr ("Document "
+					 ++ show inputName
+					 ++ " does't specify a loom (use :loom).")
+					hPutStrLn stderr (loomInfo looms)
 					exitFailure
 			
 			loom <- case Data.Map.lookup loomName looms of
 				Just loom -> return loom
 				Nothing -> do
-					hPutStrLn stderr ("Loom " ++ show loomName ++ " not recognized.")
+					hPutStrLn stderr ("Loom "
+					 ++ show loomName
+					 ++ " not recognized.")
+					hPutStrLn stderr (loomInfo looms)
 					exitFailure
 			
 			withFile path (\h -> Data.ByteString.hPut h (weave loom doc))
