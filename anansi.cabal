@@ -1,8 +1,8 @@
 name: anansi
-version: 0.4.1
+version: 0.4.2
 license: GPL-3
 license-file: license.txt
-author: John Millikin <jmillikin@gmail.com>
+author: John Millikin <jmillikin@gmail.com>, Dirk Laurie <dirk.laurie@gmail.com>
 maintainer: John Millikin <jmillikin@gmail.com>
 build-type: Simple
 cabal-version: >= 1.6
@@ -32,7 +32,7 @@ source-repository head
 source-repository this
   type: bazaar
   location: https://john-millikin.com/branches/anansi/0.4/
-  tag: anansi_0.4.1
+  tag: anansi_0.4.2
 
 library
   hs-source-dirs: lib
@@ -57,6 +57,7 @@ library
     Anansi.Loom.Debug
     Anansi.Loom.HTML
     Anansi.Loom.LaTeX
+    Anansi.Loom.Markdown
     Anansi.Loom.NoWeb
     Anansi.Main
     Anansi.Parser

@@ -51,6 +51,7 @@ module Anansi
 	, loomDebug
 	, loomHTML
 	, loomLaTeX
+	, loomMarkdown
 	, loomNoWeb
 	) where
 
@@ -60,6 +61,7 @@ import           Data.Text (Text)
 import           Anansi.Loom.Debug
 import           Anansi.Loom.HTML
 import           Anansi.Loom.LaTeX
+import           Anansi.Loom.Markdown
 import           Anansi.Loom.NoWeb
 import           Anansi.Main
 import           Anansi.Parser
@@ -73,6 +75,7 @@ import           Anansi.Types
 --     [ (\"anansi.debug\", 'loomDebug')
 --     , (\"anansi.html\", 'loomHTML')
 --     , (\"anansi.latex\", 'loomLaTeX')
+--     , (\"anansi.markdown\", 'loomMarkdown')
 --     , (\"anansi.noweb\", 'loomNoWeb')
 --     ]
 -- @
@@ -81,5 +84,6 @@ looms = fromList
 	[ ("anansi.debug", loomDebug)
 	, ("anansi.html", loomHTML)
 	, ("anansi.latex", loomLaTeX)
+	, ("anansi.markdown", loomMarkdown)
 	, ("anansi.noweb", loomNoWeb)
 	]

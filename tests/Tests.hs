@@ -286,6 +286,7 @@ test_Weave = suite "weave"
 	[ test_WeaveDebug
 	, test_WeaveHtml
 	, test_WeaveLatex
+	, test_WeaveMarkdown
 	, test_WeaveNoweb
 	, test_ParseLoomOptions
 	]
@@ -379,6 +380,40 @@ test_WeaveLatex = assertions "latex" $ do
 		\  |\\emph{bar}|\n\
 		\\\end{alltt}\n"
 
+test_WeaveMarkdown :: Suite
+test_WeaveMarkdown = assertions "markdown" $ do
+	$expect $ equalWeave loomMarkdown Map.empty
+		[]
+		""
+	$expect $ equalWeave loomMarkdown Map.empty
+		[ BlockText "foo"
+		, BlockText " _ * \\ & ` []() "
+		, BlockText "bar\n"
+		, BlockFile "file-1.hs" []
+		, BlockDefine "macro _ * \\ & ` []() 2"
+			[ ContentText (Position "test" 0) "\tfoo"
+			]
+		, BlockFile "file-2.hs"
+			[ ContentText (Position "test" 0) "foo _ * \\ & ` []() bar"
+			, ContentMacro (Position "test" 0) "  " "bar"
+			]
+		]
+		"foo _ * \\ & ` []() bar\n\
+		\\n\
+		\> **\xC2\xBB file-1.hs**\n\
+		\\n\
+		\\n\
+		\\n\
+		\> **\xC2\xAB\&macro \\_ \\* \\\\ &amp; \\` \\[\\]() 2\xC2\xBB**\n\
+		\\n\
+		\>             foo\n\
+		\\n\
+		\\n\
+		\> **\xC2\xBB file-2.hs**\n\
+		\\n\
+		\>     foo _ * \\ & ` []() bar\n\
+		\>       \xC2\xAB\&bar\xC2\xBB\n\
+		\\n"
 
 test_WeaveNoweb :: Suite
 test_WeaveNoweb = assertions "noweb" $ do
@@ -413,7 +448,7 @@ test_WeaveNoweb = assertions "noweb" $ do
 		\\\nwendcode{}\n"
 
 equalWeave :: Loom -> Map.Map Text Text -> [Block] -> ByteString -> Assertion
-equalWeave loom opts blocks = equalLines (weave loom doc) where
+equalWeave loom opts blocks expected = equalLines expected (weave loom doc) where
 	doc = Document
 		{ documentBlocks = blocks
 		, documentOptions = opts
