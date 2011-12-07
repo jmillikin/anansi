@@ -136,7 +136,9 @@ data LoomOptions = LoomOptions
 
 parseLoomOptions :: Map Text Text -> LoomOptions
 parseLoomOptions opts = LoomOptions
-	{ loomOptionTabSize = case Data.Map.lookup "tab-size" opts of
+	{ loomOptionTabSize = case Data.Map.lookup "anansi.tab-size" opts of
 	  	Just x -> read (Data.Text.unpack x)
-	  	Nothing -> 8
+	  	Nothing -> case Data.Map.lookup "tab-size" opts of
+	  		Just x -> read (Data.Text.unpack x)
+	  		Nothing -> 8
 	}
