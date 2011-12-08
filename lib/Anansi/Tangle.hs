@@ -20,23 +20,28 @@ module Anansi.Tangle (tangle) where
 import           Prelude hiding (FilePath)
 
 import qualified Control.Monad.State as S
-import           Control.Monad.Trans (lift)
-import qualified Control.Monad.Writer as W
+import qualified Control.Monad.RWS as RWS
 import qualified Data.ByteString.Char8 as ByteString
 import           Data.ByteString.Char8 (ByteString)
 import qualified Data.Map
 import           Data.Map (Map)
+import qualified Data.Text
 import           Data.Text (Text)
 import           Data.Text.Encoding (encodeUtf8)
+import qualified Text.Parsec as P
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as FP
 
 import           Anansi.Types
 
+-- macro definitions, #line pragma formatter
 type ContentMap = Map Text [Content]
+data TangleEnv = TangleEnv ContentMap (Position -> Text)
 
-data TangleState = TangleState Position ByteString ContentMap
-type TangleT m a = W.WriterT ByteString (S.StateT TangleState m) a
+-- current position, current indent
+data TangleState = TangleState Position ByteString
+
+type TangleT = RWS.RWST TangleEnv ByteString TangleState
 
 buildMacros :: [Block] -> ContentMap
 buildMacros blocks = S.execState (mapM_ accumMacro blocks) Data.Map.empty
@@ -74,53 +79,118 @@ tangle :: Monad m
        -> Bool -- ^ Enable writing #line declarations
        -> Document
        -> m ()
-tangle writeFile' enableLine doc = S.evalStateT (mapM_ putFile files) initState where
+tangle writeFile' enableLine doc = mapM_ putFile files where
 	blocks = documentBlocks doc
+	state = TangleState (Position "" 0) ""
 	
-	initState = (TangleState (Position "" 0) "" macros)
 	fileMap = buildFiles blocks
 	macros = buildMacros blocks
 	files = Data.Map.toAscList fileMap
 	
-	putFile (path, content) = do
-		bytes <- W.execWriterT (mapM_ (putContent enableLine) content)
-		lift (writeFile' (FP.fromText path) bytes)
+	putFile (pathT, content) = do
+		let path = FP.fromText pathT
+		let env = TangleEnv macros (if enableLine
+			then formatPosition doc path
+			else const "\n")
+		(_, bytes) <- RWS.evalRWST (mapM_ putContent content) env state
+		writeFile' path bytes
 
-putContent :: Monad m => Bool -> Content -> TangleT m ()
-putContent enableLine (ContentText pos t) = do
-	TangleState _ indent _ <- S.get
-	putPosition enableLine pos
-	W.tell indent
-	W.tell (encodeUtf8 t)
-	W.tell "\n"
+formatPosition :: Document -> FilePath -> Position -> Text
+formatPosition doc = checkPath where
+	fmtC = "#line ${line} ${quoted-path}"
+	defaultOptions = Data.Map.fromList
+		[ ("anansi.line-pragma-hs", fmtC)
+		, ("anansi.line-pragma-c", fmtC)
+		, ("anansi.line-pragma-cxx", fmtC)
+		, ("anansi.line-pragma-cpp", fmtC)
+		]
+	opts = fmap compileTemplate (Data.Map.union (documentOptions doc) defaultOptions)
+	
+	checkPath path = case FP.extension path of
+		Just ext -> case Data.Map.lookup ("anansi.line-pragma-" `Data.Text.append` ext) opts of
+			Just tmpl -> checkPos tmpl
+			Nothing -> const "\n"
+		Nothing -> const "\n"
+	
+	checkPos tmpl pos = formatTemplate tmpl (templateParams pos)
+	
+	templateParams pos = Data.Map.fromList
+		[ ("line", show (positionLine pos))
+		, ("quoted-path", show (either id id (FP.toText (positionFile pos))))
+		]
 
-putContent enableLine (ContentMacro pos indent name) = addIndent putMacro where
+data TemplateChunk
+	= TemplateChunkConst Text
+	| TemplateChunkVar Text
+
+type Template = [TemplateChunk]
+
+compileTemplate :: Text -> Template
+compileTemplate "" = []
+compileTemplate txt = check (P.parse parser "" (Data.Text.unpack txt)) where
+	check (Left _) = error "Internal error: compileTemplate failed."
+	check (Right tmpl) = tmpl
+	
+	parser = do
+		chunks <- P.many (P.choice [P.try twodollar, P.try var, dollar, text])
+		P.eof
+		return chunks
+	twodollar = do
+		_ <- P.string "$$"
+		return (TemplateChunkConst "$")
+	dollar = do
+		_ <- P.char '$'
+		return (TemplateChunkConst "$")
+	var = do
+		_ <- P.string "${"
+		name <- P.many1 (P.satisfy (\c -> c == '-' || (c >= 'a' && c <= 'z')))
+		_ <- P.char '}'
+		return (TemplateChunkVar (Data.Text.pack name))
+	text = do
+		chars <- P.many1 (P.satisfy (/= '$'))
+		return (TemplateChunkConst (Data.Text.pack chars))
+
+formatTemplate :: Template -> Map Text String -> Text
+formatTemplate [] _ = "\n"
+formatTemplate chunks vars = Data.Text.concat ("\n" : map formatChunk chunks ++ ["\n"]) where
+	formatChunk (TemplateChunkConst t) = t
+	formatChunk (TemplateChunkVar name) = case Data.Map.lookup name vars of
+		Just value -> Data.Text.pack value
+		Nothing -> Data.Text.concat ["${", name, "}"]
+
+putContent :: Monad m => Content -> TangleT m ()
+putContent (ContentText pos t) = do
+	TangleState _ indent <- RWS.get
+	putPosition pos
+	RWS.tell indent
+	RWS.tell (encodeUtf8 t)
+	RWS.tell "\n"
+
+putContent (ContentMacro pos indent name) = addIndent putMacro where
 	addIndent m = do
-		TangleState lastPos old macros <- S.get
-		S.put (TangleState lastPos (ByteString.append old (encodeUtf8 indent)) macros)
+		TangleState lastPos old <- RWS.get
+		RWS.put (TangleState lastPos (ByteString.append old (encodeUtf8 indent)) )
 		_ <- m
-		TangleState newPos _ _ <- S.get
-		S.put (TangleState newPos old macros)
+		TangleState newPos _ <- S.get
+		S.put (TangleState newPos old)
 	putMacro = do
-		putPosition enableLine pos
-		lookupMacro name >>= mapM_ (putContent enableLine)
+		putPosition pos
+		lookupMacro name >>= mapM_ putContent
 
-putPosition :: Monad m => Bool -> Position -> TangleT m ()
-putPosition enableLine pos = do
-	TangleState lastPos indent macros <- S.get
+putPosition :: Monad m => Position -> TangleT m ()
+putPosition pos = do
+	TangleState lastPos indent <- RWS.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
-	let filename = either id id (FP.toText (positionFile pos))
-	let line = if enableLine
-		then "\n#line " ++ show (positionLine pos) ++ " " ++ show filename ++ "\n"
-		else "\n"
-	S.put (TangleState pos indent macros)
+	RWS.put (TangleState pos indent)
 	if pos == expectedPos
 		then return ()
-		else W.tell (ByteString.pack line)
+		else do
+			TangleEnv _ format <- RWS.ask
+			RWS.tell (encodeUtf8 (format pos))
 
 lookupMacro :: Monad m => Text -> TangleT m [Content]
 lookupMacro name = do
-	TangleState _ _ macros <- S.get
+	TangleEnv macros _ <- RWS.ask
 	case Data.Map.lookup name macros of
 		Nothing -> error ("unknown macro: " ++ show name)
 		Just content -> return content

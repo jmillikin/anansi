@@ -219,9 +219,9 @@ test_Tangle = assertions "tangle" $ do
 			, ContentMacro (Position "test" 7) "  " "macro-b"
 			]
 		]
-	$expect $ equalTangle True blocks "file-1.hs"
+	$expect $ equalTangle True [] blocks "file-1.hs"
 		""
-	$expect $ equalTangle True blocks "file-2.hs"
+	$expect $ equalTangle True [] blocks "file-2.hs"
 		"\n\
 		\#line 0 \"test\"\n\
 		\foo\n\
@@ -246,9 +246,9 @@ test_Tangle = assertions "tangle" $ do
 		\\n\
 		\#line 6 \"test2\"\n\
 		\  macro-3\n"
-	$expect $ equalTangle False blocks "file-1.hs"
+	$expect $ equalTangle False [] blocks "file-1.hs"
 		""
-	$expect $ equalTangle False blocks "file-2.hs"
+	$expect $ equalTangle False [] blocks "file-2.hs"
 		"\n\
 		\foo\n\
 		\bar\n\
@@ -265,11 +265,38 @@ test_Tangle = assertions "tangle" $ do
 		\qux\n\
 		\\n\
 		\  macro-3\n"
+	
+	-- test custom #line formatting
+	$expect $ equalTangle True [("anansi.line-pragma-hs", "#line ${line}")] blocks "file-2.hs"
+		"\n\
+		\#line 0\n\
+		\foo\n\
+		\bar\n\
+		\\n\
+		\#line 3\n\
+		\baz\n\
+		\\n\
+		\#line 0\n\
+		\  macro-1\n\
+		\\n\
+		\#line 2\n\
+		\  macro-2\n\
+		\\n\
+		\#line 4\n\
+		\\n\
+		\#line 6\n\
+		\    macro-3\n\
+		\\n\
+		\#line 6\n\
+		\qux\n\
+		\\n\
+		\#line 6\n\
+		\  macro-3\n"
 
-equalTangle :: Bool -> [Block] -> Text -> ByteString -> Assertion
-equalTangle enableLinePragma blocks filename expected = equalLines
+equalTangle :: Bool -> [(Text, Text)] -> [Block] -> Text -> ByteString -> Assertion
+equalTangle enableLinePragma opts blocks filename expected = equalLines
 	expected
-	(let doc = Document blocks Map.empty Nothing in
+	(let doc = Document blocks (Map.fromList opts) Nothing in
 	(case Map.lookup filename (runTangle enableLinePragma doc) of
 		Nothing -> ""
 		Just txt -> txt))
