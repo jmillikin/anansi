@@ -103,6 +103,8 @@ formatPosition doc = checkPath where
 		, ("anansi.line-pragma-c", fmtC)
 		, ("anansi.line-pragma-cxx", fmtC)
 		, ("anansi.line-pragma-cpp", fmtC)
+		, ("anansi.line-pragma-cs", fmtC)
+		, ("anansi.line-pragma-pl", fmtC)
 		]
 	opts = fmap compileTemplate (Data.Map.union (documentOptions doc) defaultOptions)
 	
