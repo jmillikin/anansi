@@ -98,6 +98,7 @@ tangle writeFile' enableLine doc = mapM_ putFile files where
 formatPosition :: Document -> FilePath -> Position -> Text
 formatPosition doc = checkPath where
 	fmtC = "#line ${line} ${quoted-path}"
+	fmtGo = "//line ${path}:${line}"
 	defaultOptions = Data.Map.fromList
 		[ ("anansi.line-pragma-hs", fmtC)
 		, ("anansi.line-pragma-c", fmtC)
@@ -105,6 +106,7 @@ formatPosition doc = checkPath where
 		, ("anansi.line-pragma-cpp", fmtC)
 		, ("anansi.line-pragma-cs", fmtC)
 		, ("anansi.line-pragma-pl", fmtC)
+		, ("anansi.line-pragma-go", fmtGo)
 		]
 	opts = fmap compileTemplate (Data.Map.union (documentOptions doc) defaultOptions)
 	
@@ -118,6 +120,7 @@ formatPosition doc = checkPath where
 	
 	templateParams pos = Data.Map.fromList
 		[ ("line", show (positionLine pos))
+		, ("path", Data.Text.unpack (either id id (FP.toText (positionFile pos))))
 		, ("quoted-path", show (either id id (FP.toText (positionFile pos))))
 		]
 
