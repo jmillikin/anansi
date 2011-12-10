@@ -422,7 +422,7 @@ test_WeaveMarkdown = assertions "markdown" $ do
 			]
 		, BlockFile "file-2.hs"
 			[ ContentText (Position "test" 0) "foo _ * \\ & ` []() bar"
-			, ContentMacro (Position "test" 0) "  " "bar"
+			, ContentMacro (Position "test" 0) "  " "macro _ * \\ & ` []()"
 			]
 		]
 		"foo _ * \\ & ` []() bar\n\
@@ -439,7 +439,7 @@ test_WeaveMarkdown = assertions "markdown" $ do
 		\> **\xC2\xBB file-2.hs**\n\
 		\\n\
 		\>     foo _ * \\ & ` []() bar\n\
-		\>       \xC2\xAB\&bar\xC2\xBB\n\
+		\>       \xC2\xAB\&macro _ * \\ & ` []()\xC2\xBB\n\
 		\\n"
 
 test_WeaveNoweb :: Suite

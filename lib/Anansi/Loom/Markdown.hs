@@ -55,8 +55,8 @@ loomMarkdown = mapM_ putBlock . documentBlocks where
 		ContentMacro _ indent name -> formatMacro indent name >>= tell
 	
 	formatMacro indent name = do
-		escIndent <- escapeText indent
-		escName <- escapeText name
+		escIndent <- escapeCode indent
+		escName <- escapeCode name
 		return (mconcat [">     ", escIndent, "\xC2\xAB", escName, "\xC2\xBB\n"])
 
 escapeCode :: Text -> LoomM ByteString
