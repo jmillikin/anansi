@@ -180,7 +180,7 @@ putContent (ContentMacro pos indent name) = addIndent putMacro where
 		S.put (TangleState newPos old)
 	putMacro = do
 		putPosition pos
-		lookupMacro name >>= mapM_ putContent
+		lookupMacro name pos >>= mapM_ putContent
 
 putPosition :: Monad m => Position -> TangleT m ()
 putPosition pos = do
@@ -193,9 +193,16 @@ putPosition pos = do
 			TangleEnv _ format <- RWS.ask
 			RWS.tell (encodeUtf8 (format pos))
 
-lookupMacro :: Monad m => Text -> TangleT m [Content]
-lookupMacro name = do
+lookupMacro :: Monad m => Text -> Position -> TangleT m [Content]
+lookupMacro name pos = do
 	TangleEnv macros _ <- RWS.ask
 	case Data.Map.lookup name macros of
-		Nothing -> error ("unknown macro: " ++ show name)
+		Nothing -> error (concat
+			[ "unknown macro "
+			, show name
+			, " at "
+			, Data.Text.unpack (either id id (FP.toText (positionFile pos)))
+			, ":"
+			, show (positionLine pos)
+			])
 		Just content -> return content
