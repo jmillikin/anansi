@@ -35,9 +35,9 @@ import           Prelude hiding (FilePath)
 
 import           Control.Monad (liftM)
 import qualified Control.Monad.Reader as Reader
-import           Control.Monad.Reader (ReaderT, runReaderT)
+import           Control.Monad.Reader (ReaderT, EnvType, runReaderT)
 import qualified Control.Monad.Writer as Writer
-import           Control.Monad.Writer (Writer, execWriter)
+import           Control.Monad.Writer (Writer, WriterType, execWriter)
 import           Data.ByteString (ByteString)
 import qualified Data.Map
 import           Data.Map (Map)
@@ -106,12 +106,12 @@ instance Monad LoomM where
 		unLoomM (f x)
 
 instance Reader.MonadReader LoomM where
-	type Reader.EnvType LoomM = LoomOptions
+	type EnvType LoomM = LoomOptions
 	ask = LoomM Reader.ask
 	local f (LoomM m) = LoomM (Reader.local f m)
 
 instance Writer.MonadWriter LoomM where
-	type Writer.WriterType LoomM = ByteString
+	type WriterType LoomM = ByteString
 	tell = LoomM . Writer.tell
 	listen (LoomM m) = LoomM (Writer.listen m)
 	pass m = LoomM (Writer.pass (unLoomM m))
