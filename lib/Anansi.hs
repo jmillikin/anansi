@@ -71,13 +71,13 @@ import           Anansi.Types
 -- |
 --
 -- @
--- looms = Data.Map.fromList
---     [ (\"anansi.debug\", 'loomDebug')
---     , (\"anansi.html\", 'loomHTML')
---     , (\"anansi.latex\", 'loomLaTeX')
---     , (\"anansi.markdown\", 'loomMarkdown')
---     , (\"anansi.noweb\", 'loomNoWeb')
---     ]
+--looms = Data.Map.fromList
+--    [ (\"anansi.debug\", 'loomDebug')
+--    , (\"anansi.html\", 'loomHTML')
+--    , (\"anansi.latex\", 'loomLaTeX')
+--    , (\"anansi.markdown\", 'loomMarkdown')
+--    , (\"anansi.noweb\", 'loomNoWeb')
+--    ]
 -- @
 looms :: Map Text Loom
 looms = fromList
