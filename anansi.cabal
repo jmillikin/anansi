@@ -67,7 +67,7 @@ library
 executable anansi
   main-is: Main.hs
   hs-source-dirs: lib,src
-  ghc-options: -Wall
+  ghc-options: -Wall -O2
 
   build-depends:
       base >= 4.0 && < 5.0
