@@ -222,8 +222,7 @@ test_Tangle = assertions "tangle" $ do
 	$expect $ equalTangle True [] blocks "file-1.hs"
 		""
 	$expect $ equalTangle True [] blocks "file-2.hs"
-		"\n\
-		\#line 0 \"test\"\n\
+		"#line 0 \"test\"\n\
 		\foo\n\
 		\bar\n\
 		\\n\
@@ -249,8 +248,7 @@ test_Tangle = assertions "tangle" $ do
 	$expect $ equalTangle False [] blocks "file-1.hs"
 		""
 	$expect $ equalTangle False [] blocks "file-2.hs"
-		"\n\
-		\foo\n\
+		"foo\n\
 		\bar\n\
 		\\n\
 		\baz\n\
@@ -268,8 +266,7 @@ test_Tangle = assertions "tangle" $ do
 	
 	-- test custom #line formatting
 	$expect $ equalTangle True [("anansi.line-pragma-hs", "#line ${line}")] blocks "file-2.hs"
-		"\n\
-		\#line 0\n\
+		"#line 0\n\
 		\foo\n\
 		\bar\n\
 		\\n\

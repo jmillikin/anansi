@@ -19,6 +19,7 @@ module Anansi.Tangle (tangle) where
 
 import           Prelude hiding (FilePath)
 
+import           Control.Monad (when)
 import qualified Control.Monad.State as S
 import qualified Control.Monad.RWS as RWS
 import qualified Data.ByteString.Char8 as ByteString
@@ -93,7 +94,8 @@ tangle writeFile' enableLine doc = mapM_ putFile files where
 			then formatPosition doc path
 			else const "\n")
 		(_, bytes) <- RWS.evalRWST (mapM_ putContent content) env state
-		writeFile' path bytes
+		let stripped = ByteString.dropWhile (== '\n') bytes
+		writeFile' path stripped
 
 formatPosition :: Document -> FilePath -> Position -> Text
 formatPosition doc = checkPath where
@@ -187,11 +189,9 @@ putPosition pos = do
 	TangleState lastPos indent <- RWS.get
 	let expectedPos = Position (positionFile lastPos) (positionLine lastPos + 1)
 	RWS.put (TangleState pos indent)
-	if pos == expectedPos
-		then return ()
-		else do
-			TangleEnv _ format <- RWS.ask
-			RWS.tell (encodeUtf8 (format pos))
+	when (pos /= expectedPos) $ do
+		TangleEnv _ format <- RWS.ask
+		RWS.tell (encodeUtf8 (format pos))
 
 lookupMacro :: Monad m => Text -> Position -> TangleT m [Content]
 lookupMacro name pos = do
