@@ -17,9 +17,9 @@ executable anansi_tests
 
   build-depends:
       base >= 4.0 && < 5.0
-    , bytestring >= 0.9 && < 0.10
+    , bytestring >= 0.9
     , chell >= 0.2 && < 0.3
-    , containers >= 0.1 && < 0.5
+    , containers >= 0.1
     , monads-tf >= 0.1 && < 0.2
     , parsec >= 3.0 && < 3.2
     , system-argv0 >= 0.1 && < 0.2
