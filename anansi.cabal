@@ -26,12 +26,12 @@ description:
   (called &#x201C;looms&#x201D;).
 
 source-repository head
-  type: bazaar
-  location: https://john-millikin.com/branches/anansi/0.4/
+  type: git
+  location: https://john-millikin.com/code/anansi/
 
 source-repository this
-  type: bazaar
-  location: https://john-millikin.com/branches/anansi/0.4/
+  type: git
+  location: https://john-millikin.com/code/anansi/
   tag: anansi_0.4.5
 
 library
