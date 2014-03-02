@@ -1,9 +1,9 @@
 name: anansi
-version: 0.4.6
+version: 0.4.7
 license: GPL-3
 license-file: license.txt
-author: John Millikin <jmillikin@gmail.com>, Dirk Laurie <dirk.laurie@gmail.com>
-maintainer: John Millikin <jmillikin@gmail.com>
+author: John Millikin <john@john-millikin.com>, Dirk Laurie <dirk.laurie@gmail.com>
+maintainer: John Millikin <john@john-millikin.com>
 build-type: Simple
 cabal-version: >= 1.6
 category: Development
@@ -32,7 +32,7 @@ source-repository head
 source-repository this
   type: git
   location: https://john-millikin.com/code/anansi/
-  tag: anansi_0.4.6
+  tag: anansi_0.4.7
 
 library
   hs-source-dirs: lib
@@ -43,6 +43,7 @@ library
     , bytestring >= 0.9
     , containers >= 0.1
     , monads-tf >= 0.1 && < 0.2
+    , options >= 1.0 && < 2.0
     , parsec >= 3.0 && < 3.2
     , system-argv0 >= 0.1 && < 0.2
     , system-filepath >= 0.3.1 && < 0.5
@@ -74,6 +75,7 @@ executable anansi
     , bytestring >= 0.9
     , containers >= 0.1
     , monads-tf >= 0.1 && < 0.2
+    , options >= 1.0 && < 2.0
     , parsec >= 3.0 && < 3.2
     , system-argv0 >= 0.1 && < 0.2
     , system-filepath >= 0.3.1 && < 0.5

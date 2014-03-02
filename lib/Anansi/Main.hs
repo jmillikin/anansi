@@ -21,6 +21,7 @@ module Anansi.Main
 
 import           Prelude hiding (FilePath)
 
+import           Control.Applicative
 import           Control.Monad.Writer
 import           Data.ByteString (ByteString)
 import qualified Data.ByteString
@@ -34,9 +35,8 @@ import           Data.Version (showVersion)
 import qualified Filesystem
 import           Filesystem.Path (FilePath)
 import qualified Filesystem.Path.CurrentOS as FP
+import           Options
 import           System.Argv0 (getArgv0)
-import           System.Console.GetOpt hiding (usageInfo)
-import qualified System.Console.GetOpt as GetOpt
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure, exitSuccess)
 import           System.IO hiding (withFile, FilePath)
@@ -47,67 +47,121 @@ import           Anansi.Types
 
 import           Paths_anansi (version)
 
-data Mode = Tangle | Weave
-	deriving (Eq)
+data MainOptions = MainOptions
+	{ optShowVersion :: Bool
+	, optShowNumericVersion :: Bool
+	, optOutputPath :: FilePath
+	}
 
-data Option
-	= OptionHelp
-	| OptionVersion
-	| OptionNumericVersion
-	| OptionOutputPath FilePath
-	| OptionNoLines
-	deriving (Eq)
+data TangleOptions = TangleOptions
+	{ optNoLines :: Bool
+	}
 
-optionInfo :: [OptDescr Option]
-optionInfo =
-	[ Option ['h'] ["help"] (NoArg OptionHelp)
-	  "Display this help, then exit."
-	, Option [] ["version"] (NoArg OptionVersion)
-	  "Display information about this program, then exit"
-	, Option [] ["numeric-version"] (NoArg OptionNumericVersion)
-	  "Display the numeric version of Anansi, then exit."
-	, Option ['o'] ["out", "output"] (ReqArg (OptionOutputPath . fromString) "PATH")
-	  "Output path (a directory when tangling, a file when weaving)."
-	, Option [] ["disable-line-pragmas"] (NoArg OptionNoLines)
-	  "Disable generating #line pragmas in tangled code. This works\
-	  \ around a bug in Haddock."
-	]
+data WeaveOptions = WeaveOptions
 
-showUsage :: Data.Map.Map Text Loom -> [String] -> IO a
-showUsage looms errors = do
+instance Options MainOptions where
+	defineOptions = pure MainOptions
+		<*> simpleOption "version" False
+		    "Display information about this program, then exit"
+		<*> simpleOption "numeric-version" False
+		    "Display the numeric version of Anansi, then exit."
+		<*> defineOption optionType_filePath (\o -> o
+			{ optionShortFlags = ['o']
+			, optionLongFlags = ["output", "out"]
+			, optionDescription = "Output path (a directory when tangling, a file when weaving)."
+			})
+
+instance Options TangleOptions where
+	defineOptions = pure TangleOptions
+		<*> simpleOption "disable-line-pragmas" False
+		    "Disable generating #line pragmas in tangled code. This works\
+		    \ around a bug in Haddock."
+
+instance Options WeaveOptions where
+	defineOptions = pure WeaveOptions
+
+optionType_filePath :: OptionType FilePath
+optionType_filePath = optionType "path" FP.empty
+	(Right . FP.decodeString)
+	(show . either Data.Text.unpack Data.Text.unpack . FP.toText)
+
+getUsage :: IO String
+getUsage = do
 	argv0 <- getArgv0
 	let name = either Data.Text.unpack Data.Text.unpack (FP.toText argv0)
-	let usageInfo = GetOpt.usageInfo
-		("Usage: " ++ name ++ " [OPTION...] <tangle|weave> input-file\n")
-		optionInfo
-	let info = usageInfo ++ loomInfo looms
-	if null errors
-		then do
-			putStrLn info
-			exitSuccess
-		else do
-			hPutStrLn stderr (concat errors)
-			hPutStrLn stderr info
-			exitFailure
+	return ("Usage: " ++ name ++ " [OPTION...] <tangle|weave> input-file\n")
 
 loomInfo :: Data.Map.Map Text Loom -> String
 loomInfo looms = unlines lines' where
 	loomNames = sortBy nameKey (Data.Map.keys looms)
-	lines' = ["", "Available looms are:"] ++ indent 2 loomNames
+	lines' = ["Available looms are:"] ++ indent 2 loomNames
 	indent n = map (\x -> replicate n ' ' ++ Data.Text.unpack x)
 	
 	-- sort loom names so anansi-foo comes after anansi.bar
 	nameKey = comparing (Data.Text.split (== '.'))
 
-getPath :: [Option] -> FilePath
-getPath opts = case reverse [p | OptionOutputPath p <- opts] of
-	[] -> ""
-	(path:_) -> path
-
 withFile :: FilePath -> (Handle -> IO a) -> IO a
 withFile path io = if FP.null path
 	then io stdout
 	else Filesystem.withFile path WriteMode io
+
+tangleMain :: MainOptions -> TangleOptions -> [String] -> IO ()
+tangleMain mainOpts opts args = do
+	checkVersionOpts mainOpts
+	(_, doc) <- parseInput args
+	let enableLines = not (optNoLines opts)
+	case optOutputPath mainOpts of
+		"" -> tangle debugTangle enableLines doc
+		path -> tangle (realTangle path) enableLines doc
+
+weaveMain :: Data.Map.Map Text Loom -> MainOptions -> WeaveOptions -> [String] -> IO ()
+weaveMain looms mainOpts _ args = do
+	checkVersionOpts mainOpts
+	(inputName, doc) <- parseInput args
+	loomName <- case documentLoomName doc of
+		Just name -> return name
+		Nothing -> do
+			hPutStrLn stderr ("Document "
+			 ++ show inputName
+			 ++ " does't specify a loom (use :loom).")
+			hPutStrLn stderr (loomInfo looms)
+			exitFailure
+	loom <- case Data.Map.lookup loomName looms of
+		Just loom -> return loom
+		Nothing -> do
+			hPutStrLn stderr ("Loom "
+			 ++ show loomName
+			 ++ " not recognized.")
+			hPutStrLn stderr (loomInfo looms)
+			exitFailure
+	withFile (optOutputPath mainOpts) (\h -> Data.ByteString.hPut h (weave loom doc))
+
+checkVersionOpts :: MainOptions -> IO ()
+checkVersionOpts opts = do
+	when (optShowVersion opts) $ do
+		putStrLn ("anansi_" ++ showVersion version)
+		exitSuccess
+	when (optShowNumericVersion opts) $ do
+		putStrLn (showVersion version)
+		exitSuccess
+
+parseInput :: [String] -> IO (String, Document)
+parseInput [] = do
+	getUsage >>= hPutStrLn stderr
+	hPutStrLn stderr "An input file is required.\n"
+	exitFailure
+parseInput [inputName] = do
+	parsed <- parse Filesystem.readFile (fromString inputName)
+	case parsed of
+		Left err -> do
+			hPutStrLn stderr ("Parse error while processing document " ++ show inputName)
+			hPutStrLn stderr (formatError err)
+			exitFailure
+		Right doc -> return (inputName, doc)
+parseInput _ = do
+	getUsage >>= hPutStrLn stderr
+	hPutStrLn stderr "More than one input file provided.\n"
+	exitFailure
 
 -- | Run Anansi with the provided looms. Loom names are namespaced by their
 -- package name, such as @\"anansi.noweb\"@ or @\"anansi-hscolour.html\"@.
@@ -115,68 +169,27 @@ withFile path io = if FP.null path
 -- @\"com.mycompany.myformat\"@ is a good alternative.
 defaultMain :: Data.Map.Map Text Loom -> IO ()
 defaultMain looms = do
-	let usageError = showUsage looms
+	let subcommands =
+		[ subcommand "tangle" tangleMain
+		, subcommand "weave" (weaveMain looms)
+		]
 	
-	args <- getArgs
-	let (options, inputs, errors) = getOpt Permute optionInfo args
-	unless (null errors) (usageError errors)
-	when (OptionHelp `elem` options) (showUsage looms [])
-	when (OptionVersion `elem` options) $ do
-		putStrLn ("anansi_" ++ showVersion version)
-		exitSuccess
-	when (OptionNumericVersion `elem` options) $ do
-		putStrLn (showVersion version)
-		exitSuccess
-	
-	(mode, input) <- case inputs of
-		[] -> usageError ["A mode (either 'tangle' or 'weave') is required.\n"]
-		[_] -> usageError ["An input file is required.\n"]
-		[raw_mode, input] -> do
-			mode <- case raw_mode of
-				"tangle" -> return Tangle
-				"weave" -> return Weave
-				_ -> usageError ["Unrecognized mode: " ++ show raw_mode ++ ".\n"]
-			return (mode, fromString input)
-		_ -> usageError ["More than one input file provided.\n"]
-	
-	-- used for error messages
-	let inputName = either id id (FP.toText input)
-	
-	let path = getPath options
-	let enableLines = OptionNoLines `notElem` options
-	
-	parsedDoc <- parse Filesystem.readFile input
-	doc <- case parsedDoc of
-		Left err -> do
-			hPutStrLn stderr ("Parse error while processing document " ++ show inputName)
-			hPutStrLn stderr (formatError err)
-			exitFailure
-		Right x -> return x
-	
-	case mode of
-		Tangle -> case path of
-			"" -> tangle debugTangle enableLines doc
-			_ -> tangle (realTangle path) enableLines doc
-		Weave -> do
-			loomName <- case documentLoomName doc of
-				Just name -> return name
-				Nothing -> do
-					hPutStrLn stderr ("Document "
-					 ++ show inputName
-					 ++ " does't specify a loom (use :loom).")
-					hPutStrLn stderr (loomInfo looms)
-					exitFailure
-			
-			loom <- case Data.Map.lookup loomName looms of
-				Just loom -> return loom
-				Nothing -> do
-					hPutStrLn stderr ("Loom "
-					 ++ show loomName
-					 ++ " not recognized.")
-					hPutStrLn stderr (loomInfo looms)
-					exitFailure
-			
-			withFile path (\h -> Data.ByteString.hPut h (weave loom doc))
+	argv <- getArgs
+	let parsed = parseSubcommand subcommands argv
+	case parsedSubcommand parsed of
+		Just cmd -> cmd
+		Nothing -> case parsedError parsed of
+			Just err -> do
+				getUsage >>= hPutStrLn stderr
+				hPutStr stderr (parsedHelp parsed)
+				hPutStrLn stderr (loomInfo looms)
+				hPutStrLn stderr err
+				exitFailure
+			Nothing -> do
+				getUsage >>= hPutStrLn stdout
+				hPutStr stdout (parsedHelp parsed)
+				hPutStrLn stdout (loomInfo looms)
+				exitSuccess
 
 debugTangle :: FilePath -> ByteString -> IO ()
 debugTangle path bytes = do
