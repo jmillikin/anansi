@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeFamilies #-}
 
 -- Copyright (C) 2010-2011 John Millikin <jmillikin@gmail.com>
 --

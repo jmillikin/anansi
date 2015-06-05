@@ -33,7 +33,8 @@ module Anansi.Types
 
 import           Prelude hiding (FilePath)
 
-import           Control.Monad (liftM)
+import           Control.Applicative (Applicative, pure, (<*>))
+import           Control.Monad (ap, liftM)
 import qualified Control.Monad.Reader as Reader
 import           Control.Monad.Reader (ReaderT, EnvType, runReaderT)
 import qualified Control.Monad.Writer as Writer
@@ -98,6 +99,10 @@ newtype LoomM a = LoomM { unLoomM :: ReaderT LoomOptions (Writer ByteString) a }
 
 instance Functor LoomM where
 	fmap = liftM
+
+instance Applicative LoomM where
+	pure = return
+	(<*>) = ap
 
 instance Monad LoomM where
 	return = LoomM . return

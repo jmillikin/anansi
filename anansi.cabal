@@ -1,5 +1,5 @@
 name: anansi
-version: 0.4.7
+version: 0.4.8
 license: GPL-3
 license-file: license.txt
 author: John Millikin <john@john-millikin.com>, Dirk Laurie <dirk.laurie@gmail.com>
@@ -32,11 +32,14 @@ source-repository head
 source-repository this
   type: git
   location: https://john-millikin.com/code/anansi/
-  tag: anansi_0.4.7
+  tag: anansi_0.4.8
 
 library
   hs-source-dirs: lib
   ghc-options: -Wall -O2
+
+  if impl(ghc>=7.10)
+    ghc-options: -fno-warn-tabs
 
   build-depends:
       base >= 4.0 && < 5.0
@@ -69,6 +72,9 @@ executable anansi
   main-is: Main.hs
   hs-source-dirs: lib,src
   ghc-options: -Wall -O2
+
+  if impl(ghc>=7.10)
+    ghc-options: -fno-warn-tabs
 
   build-depends:
       base >= 4.0 && < 5.0
